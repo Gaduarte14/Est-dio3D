@@ -1,0 +1,6 @@
+{
+  "name": "Estúdio 3D IA",
+  "description": "Estúdio pessoal de modelagem 3D estática com Inteligência Artificial via Google AI Studio, texturização dedicada por peça e exportação real em .STL e .3MF para impressão 3D.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": []
+}

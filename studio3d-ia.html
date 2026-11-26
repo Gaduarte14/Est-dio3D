@@ -1,0 +1,3630 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Estúdio 3D IA — Modelagem Estática, Texturização e Exportação .STL / .3MF</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      }
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+
+  <style>
+    :root {
+      --bg-app: #0d0f14;
+      --bg-panel: #141720;
+      --bg-surface: #1b1f2b;
+      --bg-surface-hover: #232938;
+      --bg-input: #10131b;
+      --border-subtle: #252b3b;
+      --border-strong: #353e54;
+      --text-primary: #edf1f8;
+      --text-secondary: #98a3b8;
+      --text-muted: #68738a;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --accent-soft: rgba(59, 130, 246, 0.16);
+      --accent-border: rgba(59, 130, 246, 0.45);
+      --success: #10b981;
+      --success-bg: rgba(16, 185, 129, 0.14);
+      --danger: #ef4444;
+      --danger-bg: rgba(239, 68, 68, 0.14);
+      --warning: #f59e0b;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 12px;
+      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+      --header-height: 58px;
+      --sidebar-width: 420px;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--bg-app);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Discrete Studio Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #2c3345;
+      border-radius: 999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #3d465e;
+    }
+
+    /* App Shell */
+    .app-shell {
+      display: flex;
+      flex-direction: column;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Top Header Bar */
+    .studio-header {
+      height: var(--header-height);
+      min-height: var(--header-height);
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 0 16px;
+      z-index: 30;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      flex-shrink: 0;
+    }
+
+    .brand-mark {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      background: var(--accent);
+      color: #ffffff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: -0.02em;
+      flex-shrink: 0;
+    }
+
+    .brand-title {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.015em;
+      color: var(--text-primary);
+      white-space: nowrap;
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .header-divider {
+      width: 1px;
+      height: 24px;
+      background: var(--border-subtle);
+      flex-shrink: 0;
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .control-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+
+    /* Form Controls */
+    input[type="password"],
+    input[type="text"],
+    input[type="number"],
+    select,
+    textarea {
+      background: var(--bg-input);
+      color: var(--text-primary);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    input[type="password"]:focus,
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    select:focus,
+    textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.22);
+    }
+
+    .input-api-key {
+      width: 218px;
+      height: 34px;
+      padding: 0 10px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+
+    .select-model {
+      width: 182px;
+      height: 34px;
+      padding: 0 8px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .input-height-mm {
+      width: 72px;
+      height: 34px;
+      padding: 0 8px;
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      height: 34px;
+      padding: 0 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+    }
+
+    .btn:hover:not(:disabled) {
+      background: var(--bg-surface-hover);
+      border-color: var(--border-strong);
+    }
+
+    .btn:active:not(:disabled) {
+      transform: translateY(1px);
+    }
+
+    .btn:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .btn:disabled {
+      opacity: 0.48;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #ffffff;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+    }
+
+    .btn-export-3mf {
+      background: rgba(59, 130, 246, 0.16);
+      border-color: rgba(59, 130, 246, 0.45);
+      color: #93c5fd;
+    }
+
+    .btn-export-3mf:hover:not(:disabled) {
+      background: rgba(59, 130, 246, 0.28);
+      border-color: var(--accent);
+      color: #ffffff;
+    }
+
+    .btn-ghost {
+      background: transparent;
+      border-color: transparent;
+      color: var(--text-secondary);
+      padding: 0 8px;
+      height: 28px;
+      font-size: 12px;
+    }
+
+    .btn-ghost:hover:not(:disabled) {
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      border-color: transparent;
+    }
+
+    .btn-icon {
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      font-size: 15px;
+    }
+
+    .btn-danger-soft {
+      background: var(--danger-bg);
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+    }
+
+    .btn-danger-soft:hover:not(:disabled) {
+      background: rgba(239, 68, 68, 0.25);
+      border-color: var(--danger);
+      color: #ffffff;
+    }
+
+    /* Main Workspace Layout */
+    .workspace {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    /* 3D Viewport Area */
+    .viewport-section {
+      position: relative;
+      flex: 1;
+      min-width: 0;
+      height: 100%;
+      background: radial-gradient(circle at 50% 42%, #191e2a 0%, #0e1117 75%);
+      overflow: hidden;
+    }
+
+    #viewportCanvasMount {
+      width: 100%;
+      height: 100%;
+      display: block;
+      position: relative;
+    }
+
+    #viewportCanvasMount canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      outline: none;
+    }
+
+    /* Floating Viewport Toolbar (No backdrop-filter over WebGL) */
+    .viewport-toolbar {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px;
+      background: rgba(20, 23, 32, 0.92);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      z-index: 10;
+    }
+
+    .vp-btn {
+      height: 32px;
+      padding: 0 11px;
+      border-radius: var(--radius-sm);
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-secondary);
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .vp-btn:hover {
+      background: var(--bg-surface);
+      color: var(--text-primary);
+    }
+
+    .vp-btn.is-active {
+      background: var(--accent-soft);
+      border-color: var(--accent-border);
+      color: #93c5fd;
+    }
+
+    /* Real-time Stats Bar */
+    .viewport-stats {
+      position: absolute;
+      left: 14px;
+      bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 14px;
+      background: rgba(20, 23, 32, 0.92);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      font-size: 12px;
+      color: var(--text-secondary);
+      z-index: 10;
+      pointer-events: none;
+      max-width: calc(100% - 28px);
+    }
+
+    .stat-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+    }
+
+    .stat-value {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .stat-sep {
+      color: var(--border-strong);
+      user-select: none;
+    }
+
+    .viewport-hint {
+      position: absolute;
+      right: 14px;
+      bottom: 14px;
+      padding: 7px 11px;
+      background: rgba(20, 23, 32, 0.85);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      font-size: 11.5px;
+      color: var(--text-muted);
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* Loading Overlay */
+    .viewport-loading {
+      position: absolute;
+      inset: 0;
+      background: rgba(13, 15, 20, 0.78);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      z-index: 25;
+    }
+
+    .viewport-loading.is-visible {
+      display: flex;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(255, 255, 255, 0.14);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: 0.01em;
+    }
+
+    /* Toast Notifications */
+    .toast-container {
+      position: fixed;
+      top: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 100;
+      pointer-events: none;
+      max-width: 520px;
+      width: max-content;
+    }
+
+    .toast {
+      pointer-events: auto;
+      padding: 10px 16px;
+      border-radius: var(--radius-md);
+      background: #1b202d;
+      border: 1px solid var(--border-strong);
+      color: var(--text-primary);
+      font-size: 13px;
+      font-weight: 500;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: toastIn 0.18s ease-out;
+    }
+
+    .toast-success {
+      border-color: rgba(16, 185, 129, 0.55);
+      background: #11241e;
+      color: #a7f3d0;
+    }
+
+    .toast-error {
+      border-color: rgba(239, 68, 68, 0.55);
+      background: #281417;
+      color: #fecaca;
+    }
+
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Sidebar Panel */
+    .studio-sidebar {
+      width: var(--sidebar-width);
+      min-width: 360px;
+      max-width: 480px;
+      height: 100%;
+      background: var(--bg-panel);
+      border-left: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 20;
+    }
+
+    .sidebar-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border-subtle);
+      background: var(--bg-panel);
+      flex-shrink: 0;
+    }
+
+    .tab-btn {
+      height: 36px;
+      border-radius: var(--radius-sm);
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-secondary);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .tab-btn:hover {
+      background: var(--bg-surface);
+      color: var(--text-primary);
+    }
+
+    .tab-btn.is-active {
+      background: var(--bg-surface);
+      border-color: var(--border-strong);
+      color: var(--text-primary);
+    }
+
+    .tab-panel {
+      display: none;
+      flex: 1;
+      min-height: 0;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .tab-panel.is-active {
+      display: flex;
+    }
+
+    /* Tab 1: Modelagem (Chat IA) */
+    .chat-subheader {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 14px;
+      border-bottom: 1px solid var(--border-subtle);
+      flex-shrink: 0;
+    }
+
+    .chat-subheader-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .chat-messages {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .msg-bubble {
+      padding: 10px 13px;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      line-height: 1.5;
+      word-break: break-word;
+      max-width: 94%;
+    }
+
+    .msg-role-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      display: block;
+    }
+
+    .msg-user {
+      align-self: flex-end;
+      background: #1e3154;
+      border: 1px solid rgba(59, 130, 246, 0.35);
+      color: #edf4ff;
+    }
+
+    .msg-user .msg-role-label {
+      color: #93c5fd;
+    }
+
+    .msg-ai {
+      align-self: flex-start;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-primary);
+    }
+
+    .msg-system {
+      align-self: stretch;
+      max-width: 100%;
+      background: rgba(27, 31, 43, 0.55);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      font-size: 12.5px;
+    }
+
+    .msg-error {
+      align-self: stretch;
+      max-width: 100%;
+      background: var(--danger-bg);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #fecaca;
+      font-size: 12.5px;
+    }
+
+    .msg-attachments-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .msg-thumb {
+      width: 68px;
+      height: 68px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      display: block;
+    }
+
+    .msg-file-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: rgba(13, 15, 20, 0.55);
+      border: 1px solid var(--border-subtle);
+      font-size: 11.5px;
+      color: var(--text-secondary);
+    }
+
+    .msg-audio-player {
+      width: 100%;
+      height: 30px;
+      margin-top: 6px;
+    }
+
+    /* Chat Composer Area */
+    .chat-composer-wrap {
+      border-top: 1px solid var(--border-subtle);
+      padding: 12px 14px 14px;
+      background: var(--bg-panel);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12.5px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .checkbox-row input[type="checkbox"] {
+      width: 15px;
+      height: 15px;
+      accent-color: var(--accent);
+      cursor: pointer;
+      margin: 0;
+    }
+
+    .attachment-chips {
+      display: none;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .attachment-chips.has-items {
+      display: flex;
+    }
+
+    .attach-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 6px 4px 6px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-strong);
+      border-radius: 7px;
+      font-size: 11.5px;
+      color: var(--text-primary);
+      max-width: 100%;
+    }
+
+    .attach-chip img {
+      width: 26px;
+      height: 26px;
+      border-radius: 4px;
+      object-fit: cover;
+    }
+
+    .attach-chip-name {
+      max-width: 150px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .attach-chip-remove {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+      padding: 2px 4px;
+      border-radius: 4px;
+    }
+
+    .attach-chip-remove:hover {
+      color: #fca5a5;
+      background: rgba(239, 68, 68, 0.16);
+    }
+
+    /* Live Voice Recording Banner (Pulsing indicator ONLY while actively recording) */
+    .recording-banner {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 10px;
+      border-radius: var(--radius-sm);
+      background: var(--danger-bg);
+      border: 1px solid rgba(239, 68, 68, 0.45);
+      color: #fecaca;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .recording-banner.is-recording {
+      display: flex;
+    }
+
+    .rec-indicator-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .rec-pulse-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #ef4444;
+      animation: recPulse 1s ease-in-out infinite;
+    }
+
+    @keyframes recPulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.4); opacity: 0.45; }
+    }
+
+    .rec-timer {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .composer-input-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+    }
+
+    .composer-tools {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .chat-textarea {
+      flex: 1;
+      min-height: 54px;
+      max-height: 128px;
+      padding: 9px 12px;
+      resize: none;
+      line-height: 1.4;
+    }
+
+    .btn-send {
+      height: 54px;
+      padding: 0 16px;
+    }
+
+    .btn-record-active {
+      background: var(--danger);
+      border-color: var(--danger);
+      color: #ffffff;
+    }
+
+    .btn-record-active:hover:not(:disabled) {
+      background: #dc2626;
+      border-color: #dc2626;
+    }
+
+    /* Tab 2: Texturizar */
+    .texture-scroll {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .panel-section {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .panel-section:last-child {
+      border-bottom: none;
+      padding-bottom: 6px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin: 0;
+    }
+
+    .section-subtitle {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    /* Part Selector Pills */
+    .parts-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .part-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-surface);
+      color: var(--text-secondary);
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .part-pill:hover {
+      background: var(--bg-surface-hover);
+      color: var(--text-primary);
+    }
+
+    .part-pill.is-selected {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: #ffffff;
+    }
+
+    .part-color-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      flex-shrink: 0;
+    }
+
+    /* AI Texturing Controls */
+    .ai-texture-prompt {
+      width: 100%;
+      min-height: 68px;
+      padding: 9px 11px;
+      resize: vertical;
+    }
+
+    .ai-texture-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .ai-texture-actions .btn-primary {
+      flex: 1;
+    }
+
+    /* Manual Texture Controls */
+    .manual-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .color-picker-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    input[type="color"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 42px;
+      height: 32px;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      background: transparent;
+      padding: 2px;
+      cursor: pointer;
+    }
+
+    input[type="color"]::-webkit-color-swatch-wrapper {
+      padding: 0;
+    }
+
+    input[type="color"]::-webkit-color-swatch {
+      border: none;
+      border-radius: 4px;
+    }
+
+    .hex-readout {
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      color: var(--text-primary);
+      text-transform: uppercase;
+    }
+
+    .slider-block {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .slider-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12.5px;
+      color: var(--text-secondary);
+    }
+
+    .slider-val {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+      cursor: pointer;
+      height: 6px;
+      margin: 2px 0;
+    }
+
+    .uv-actions-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .procedural-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 7px;
+    }
+
+    .proc-btn {
+      height: 34px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .proc-btn:hover {
+      background: var(--bg-surface-hover);
+      border-color: var(--border-strong);
+    }
+
+    .proc-btn.is-active {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: #bfdbfe;
+    }
+
+    /* Advanced Details Code Editor */
+    details.advanced-details {
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      background: var(--bg-input);
+      overflow: hidden;
+    }
+
+    details.advanced-details summary {
+      padding: 10px 12px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      user-select: none;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    details.advanced-details summary::-webkit-details-marker {
+      display: none;
+    }
+
+    details.advanced-details summary::after {
+      content: '▸';
+      font-size: 12px;
+      transition: transform 0.15s ease;
+    }
+
+    details.advanced-details[open] summary::after {
+      transform: rotate(90deg);
+    }
+
+    details.advanced-details summary:hover {
+      color: var(--text-primary);
+    }
+
+    .code-editor-body {
+      padding: 0 12px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .code-editor-textarea {
+      width: 100%;
+      height: 220px;
+      padding: 10px;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      line-height: 1.45;
+      color: #dbe6ff;
+      background: #0b0d12;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      resize: vertical;
+      tab-size: 2;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    @media (max-width: 1024px) {
+      .workspace {
+        flex-direction: column;
+      }
+      .viewport-section {
+        height: 52%;
+        flex: none;
+      }
+      .studio-sidebar {
+        width: 100%;
+        min-width: 0;
+        max-width: none;
+        height: 48%;
+        border-left: none;
+        border-top: 1px solid var(--border-subtle);
+      }
+      .viewport-hint {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell" id="appShell" data-parts-count="0" data-triangles-count="0" data-selected-part="Todas as peças">
+    <!-- Top Bar Header -->
+    <header class="studio-header">
+      <div class="header-brand">
+        <span class="brand-mark" aria-hidden="true">3D</span>
+        <span class="brand-title">Estúdio 3D IA</span>
+      </div>
+
+      <div class="header-controls">
+        <!-- Google AI Studio API Key -->
+        <div class="control-group">
+          <label class="control-label" for="apiKeyInput">API Key</label>
+          <input
+            type="password"
+            id="apiKeyInput"
+            class="input-api-key"
+            placeholder="API Key do Google AI Studio"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button type="button" id="btnSaveKey" class="btn">Salvar</button>
+        </div>
+
+        <span class="header-divider" aria-hidden="true"></span>
+
+        <!-- Gemini Model Selector -->
+        <div class="control-group">
+          <label class="control-label" for="modelSelect">Modelo</label>
+          <select id="modelSelect" class="select-model" aria-label="Selecionar modelo do Google AI Studio">
+            <option value="gemini-4-neon" selected>gemini-4-neon</option>
+            <option value="gemini-4-hydrogen">gemini-4-hydrogen</option>
+            <option value="gemini-4-carbon">gemini-4-carbon</option>
+            <option value="gemini-4-argon">gemini-4-argon</option>
+            <option value="gemini-3.8-flash">gemini-3.8-flash</option>
+            <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+            <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+          </select>
+          <button type="button" id="btnFetchModels" class="btn" title="Consultar modelos liberados na sua conta">
+            ↻ Buscar
+          </button>
+        </div>
+
+        <span class="header-divider" aria-hidden="true"></span>
+
+        <!-- 3D Printing Export Controls -->
+        <div class="control-group">
+          <label class="control-label" for="exportHeightMm">Altura (mm)</label>
+          <input
+            type="number"
+            id="exportHeightMm"
+            class="input-height-mm"
+            value="100"
+            min="5"
+            max="1000"
+            step="1"
+          />
+          <button type="button" id="btnExportStl" class="btn" title="Exportar malha binária .STL normalizada em Z-Up">
+            ⬇ .STL
+          </button>
+          <button type="button" id="btnExport3mf" class="btn btn-export-3mf" title="Exportar pacote .3MF com cores por peça para Bambu Studio, OrcaSlicer, PrusaSlicer e Cura">
+            ⬇ .3MF
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <div class="workspace">
+      <!-- 3D Viewport -->
+      <main class="viewport-section" aria-label="Viewport de Modelagem 3D">
+        <div id="viewportCanvasMount" data-testid="three-viewport"></div>
+
+        <!-- Floating Viewport Controls -->
+        <div class="viewport-toolbar" role="toolbar" aria-label="Controles do Viewport 3D">
+          <button type="button" id="btnResetCamera" class="vp-btn" title="Centralizar câmera no modelo">
+            Centralizar câmera
+          </button>
+          <button type="button" id="btnToggleWireframe" class="vp-btn" aria-pressed="false" title="Alternar visualização em malha (Wireframe)">
+            Malha (Wireframe)
+          </button>
+          <button type="button" id="btnToggleGrid" class="vp-btn is-active" aria-pressed="true" title="Mostrar ou ocultar grade da mesa de impressão">
+            Grade
+          </button>
+        </div>
+
+        <!-- Real-Time Stats Bar -->
+        <div class="viewport-stats" id="viewportStats" aria-live="polite">
+          <span class="stat-item">Peças: <strong class="stat-value" id="statParts">0</strong></span>
+          <span class="stat-sep" aria-hidden="true">·</span>
+          <span class="stat-item">Triângulos: <strong class="stat-value" id="statTriangles">0</strong></span>
+          <span class="stat-sep" aria-hidden="true">·</span>
+          <span class="stat-item">Selecionada: <strong class="stat-value" id="statSelected">Todas as peças</strong></span>
+        </div>
+
+        <div class="viewport-hint">
+          Arraste para girar · Scroll para zoom · Clique em uma peça para selecionar
+        </div>
+
+        <!-- Loading Overlay -->
+        <div class="viewport-loading" id="viewportLoading" role="status" aria-live="assertive">
+          <div class="spinner" aria-hidden="true"></div>
+          <div class="loading-text" id="loadingMessage">Processando...</div>
+        </div>
+      </main>
+
+      <!-- Right Sidebar with 2 Tabs -->
+      <aside class="studio-sidebar" aria-label="Painel de Ferramentas 3D">
+        <div class="sidebar-tabs" role="tablist" aria-label="Modos do Estúdio">
+          <button
+            type="button"
+            id="tabBtnModeling"
+            class="tab-btn is-active"
+            role="tab"
+            aria-selected="true"
+            aria-controls="tabPanelModeling"
+          >
+            🛠️ Modelagem (Chat IA)
+          </button>
+          <button
+            type="button"
+            id="tabBtnTexturing"
+            class="tab-btn"
+            role="tab"
+            aria-selected="false"
+            aria-controls="tabPanelTexturing"
+          >
+            🎨 Texturizar
+          </button>
+        </div>
+
+        <!-- TAB 1: Modelagem (Chat IA) -->
+        <section
+          id="tabPanelModeling"
+          class="tab-panel is-active"
+          role="tabpanel"
+          aria-labelledby="tabBtnModeling"
+        >
+          <div class="chat-subheader">
+            <span class="chat-subheader-title">Escultura 3D Estática (Iterativa)</span>
+            <button type="button" id="btnClearChat" class="btn btn-ghost" title="Limpar histórico de mensagens">
+              Limpar histórico
+            </button>
+          </div>
+
+          <div class="chat-messages" id="chatMessages" aria-live="polite"></div>
+
+          <div class="chat-composer-wrap">
+            <label class="checkbox-row" for="chkTextureFromImage">
+              <input type="checkbox" id="chkTextureFromImage" checked />
+              <span>Entender e aplicar texturas/cores pela imagem</span>
+            </label>
+
+            <div class="recording-banner" id="recordingBanner" aria-live="polite">
+              <span class="rec-indicator-left">
+                <span class="rec-pulse-dot" aria-hidden="true"></span>
+                <span>Gravando áudio do microfone...</span>
+              </span>
+              <span class="rec-timer" id="recTimer">00:00</span>
+            </div>
+
+            <div class="attachment-chips" id="chatAttachmentChips" aria-label="Arquivos e áudios anexados"></div>
+
+            <div class="composer-input-row">
+              <div class="composer-tools">
+                <input
+                  type="file"
+                  id="chatFileInput"
+                  class="sr-only"
+                  tabindex="-1"
+                  aria-hidden="true"
+                  multiple
+                  accept="image/*,.pdf,.txt,.json,.obj,.stl,.csv,.md"
+                />
+                <button
+                  type="button"
+                  id="btnAttachFiles"
+                  class="btn btn-icon"
+                  title="Anexar imagens de referência ou arquivos (.pdf, .txt, .json, .obj)"
+                  aria-label="Anexar arquivos ou imagens"
+                >
+                  📎
+                </button>
+                <button
+                  type="button"
+                  id="btnRecordVoice"
+                  class="btn btn-icon"
+                  title="Gravar comando de voz (enviado direto ao Gemini)"
+                  aria-label="Gravar voz"
+                >
+                  🎙️
+                </button>
+              </div>
+
+              <textarea
+                id="chatInput"
+                class="chat-textarea"
+                rows="2"
+                placeholder="Descreva o modelo 3D ou peça ajustes..."
+                title="Enter envia · Shift+Enter quebra linha"
+                aria-label="Prompt de modelagem 3D (Enter envia, Shift+Enter quebra linha)"
+              ></textarea>
+
+              <button type="button" id="btnSendChat" class="btn btn-primary btn-send">
+                Enviar
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB 2: Texturizar -->
+        <section
+          id="tabPanelTexturing"
+          class="tab-panel"
+          role="tabpanel"
+          aria-labelledby="tabBtnTexturing"
+        >
+          <div class="texture-scroll">
+            <!-- Lista de Peças -->
+            <div class="panel-section">
+              <div class="section-header">
+                <h2 class="section-title">Peças do Modelo</h2>
+                <span class="section-subtitle" id="partsCountLabel">0 peças</span>
+              </div>
+              <div class="parts-list" id="partsList" role="group" aria-label="Selecionar peça do modelo 3D"></div>
+            </div>
+
+            <!-- Texturizar com IA -->
+            <div class="panel-section">
+              <div class="section-header">
+                <h2 class="section-title">Texturizar com IA</h2>
+                <span class="section-subtitle">Mantém geometria intacta</span>
+              </div>
+
+              <textarea
+                id="aiTexturePrompt"
+                class="ai-texture-prompt"
+                placeholder="Ex: madeira escura na base, metal dourado na coluna e porcelana fosca na cabeça..."
+                aria-label="Descrição de texturização com IA"
+              ></textarea>
+
+              <div class="attachment-chips" id="textureRefChipContainer"></div>
+
+              <div class="ai-texture-actions">
+                <input type="file" id="textureRefFileInput" class="sr-only" tabindex="-1" aria-hidden="true" accept="image/*" />
+                <button type="button" id="btnTextureRefPhoto" class="btn" title="Anexar imagem de referência de cor ou material">
+                  🖼️ Foto Ref.
+                </button>
+                <button type="button" id="btnApplyAiTexture" class="btn btn-primary">
+                  Aplicar Texturização com IA
+                </button>
+              </div>
+            </div>
+
+            <!-- Ajuste Manual -->
+            <div class="panel-section">
+              <div class="section-header">
+                <h2 class="section-title">Ajuste Manual</h2>
+                <span class="section-subtitle" id="manualTargetLabel">Alvo: Todas as peças</span>
+              </div>
+
+              <div class="manual-row">
+                <label class="control-label" for="manualColorPicker">Cor Base (preservada no .3MF)</label>
+                <div class="color-picker-group">
+                  <span class="hex-readout" id="manualColorHex">#8A92A0</span>
+                  <input type="color" id="manualColorPicker" value="#8a92a0" aria-label="Cor Base do material" />
+                </div>
+              </div>
+
+              <div class="slider-block">
+                <div class="slider-header">
+                  <label for="manualRoughness">Rugosidade (Roughness)</label>
+                  <span class="slider-val" id="manualRoughnessVal">0.50</span>
+                </div>
+                <input type="range" id="manualRoughness" min="0" max="1" step="0.01" value="0.50" />
+              </div>
+
+              <div class="slider-block">
+                <div class="slider-header">
+                  <label for="manualMetalness">Metálico (Metalness)</label>
+                  <span class="slider-val" id="manualMetalnessVal">0.15</span>
+                </div>
+                <input type="range" id="manualMetalness" min="0" max="1" step="0.01" value="0.15" />
+              </div>
+
+              <div>
+                <div class="slider-header" style="margin-bottom: 6px;">
+                  <span>Imagem de Textura (UV)</span>
+                </div>
+                <input type="file" id="uvTextureInput" class="sr-only" tabindex="-1" aria-hidden="true" accept="image/*" />
+                <div class="uv-actions-row">
+                  <button type="button" id="btnUploadUvTexture" class="btn">Subir Imagem</button>
+                  <button type="button" id="btnRemoveUvTexture" class="btn btn-danger-soft">Remover Textura</button>
+                </div>
+              </div>
+
+              <div>
+                <div class="slider-header" style="margin-bottom: 6px;">
+                  <span>Texturas Procedurais Rápidas</span>
+                </div>
+                <div class="procedural-grid" id="proceduralButtons">
+                  <button type="button" class="proc-btn" data-preset="liso">Liso</button>
+                  <button type="button" class="proc-btn" data-preset="madeira">Madeira</button>
+                  <button type="button" class="proc-btn" data-preset="marmore">Mármore</button>
+                  <button type="button" class="proc-btn" data-preset="pedra">Pedra</button>
+                  <button type="button" class="proc-btn" data-preset="metal">Metal</button>
+                  <button type="button" class="proc-btn" data-preset="fibra">Fibra</button>
+                </div>
+              </div>
+
+              <button type="button" id="btnApplyManualAll" class="btn" style="width: 100%; margin-top: 2px;">
+                Aplicar em Todas as Peças
+              </button>
+            </div>
+
+            <!-- Avançado: Editor de Código Three.js -->
+            <div class="panel-section">
+              <details class="advanced-details" id="advancedCodeDetails">
+                <summary>Avançado: Código Three.js do Modelo</summary>
+                <div class="code-editor-body">
+                  <textarea
+                    id="codeEditorTextarea"
+                    class="code-editor-textarea"
+                    spellcheck="false"
+                    aria-label="Código Three.js do modelo atual"
+                  ></textarea>
+                  <button type="button" id="btnRerunCode" class="btn btn-primary" style="width: 100%;">
+                    Reexecutar Código 3D
+                  </button>
+                </div>
+              </details>
+            </div>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </div>
+
+  <!-- Non-blocking Toast Container -->
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { STLExporter } from 'three/addons/exporters/STLExporter.js';
+    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+    // =========================================================================
+    // 1. CONSTANTES, ESTADO GLOBAL E MODELO INICIAL DE DEMONSTRAÇÃO
+    // =========================================================================
+    const STORAGE_KEY_API = 'studio3d_ia_gemini_api_key';
+    const STORAGE_KEY_MODEL = 'studio3d_ia_selected_model';
+
+    const DEFAULT_MODELS = [
+      'gemini-4-neon',
+      'gemini-4-hydrogen',
+      'gemini-4-carbon',
+      'gemini-4-argon',
+      'gemini-3.8-flash',
+      'gemini-2.5-pro',
+      'gemini-2.5-flash'
+    ];
+
+    // Modelo inicial estilizado (busto escultural multi-peças com nomes descritivos em pt-BR)
+    const DEFAULT_MODEL_CODE = `// Busto Escultural Estilizado — 100% Estático e Multi-Peças para Impressão 3D
+
+// 1. Base escalonada torneada
+const basePts = [
+  new THREE.Vector2(0.0, 0.0),
+  new THREE.Vector2(1.06, 0.0),
+  new THREE.Vector2(1.06, 0.14),
+  new THREE.Vector2(0.94, 0.22),
+  new THREE.Vector2(0.86, 0.34),
+  new THREE.Vector2(0.64, 0.42),
+  new THREE.Vector2(0.0, 0.42)
+];
+const baseMesh = new THREE.Mesh(
+  new THREE.LatheGeometry(basePts, 48),
+  new THREE.MeshStandardMaterial({ color: 0x262c3a, roughness: 0.44, metalness: 0.14 })
+);
+baseMesh.name = 'Base';
+group.add(baseMesh);
+
+// 2. Coluna metálica de sustentação
+const colPts = [
+  new THREE.Vector2(0.0, 0.40),
+  new THREE.Vector2(0.38, 0.40),
+  new THREE.Vector2(0.24, 0.54),
+  new THREE.Vector2(0.21, 0.88),
+  new THREE.Vector2(0.36, 1.02),
+  new THREE.Vector2(0.0, 1.02)
+];
+const colunaMesh = new THREE.Mesh(
+  new THREE.LatheGeometry(colPts, 36),
+  new THREE.MeshStandardMaterial({ color: 0xc89d47, roughness: 0.26, metalness: 0.84 })
+);
+colunaMesh.name = 'Coluna';
+group.add(colunaMesh);
+
+// 3. Torso clássico esculpido (Lathe elíptico com ombros chanfrados)
+const torsoPts = [
+  new THREE.Vector2(0.0, 0.96),
+  new THREE.Vector2(0.42, 0.96),
+  new THREE.Vector2(0.76, 1.16),
+  new THREE.Vector2(0.98, 1.44),
+  new THREE.Vector2(0.92, 1.66),
+  new THREE.Vector2(0.54, 1.80),
+  new THREE.Vector2(0.34, 1.82),
+  new THREE.Vector2(0.0, 1.82)
+];
+const torsoGeo = new THREE.LatheGeometry(torsoPts, 48);
+torsoGeo.scale(1.08, 1.0, 0.62);
+const torsoMesh = new THREE.Mesh(
+  torsoGeo,
+  new THREE.MeshStandardMaterial({ color: 0x355c7d, roughness: 0.68, metalness: 0.06 })
+);
+torsoMesh.name = 'Torso';
+group.add(torsoMesh);
+
+// 4. Gola dobrada (visível acima do torso)
+const golaMesh = new THREE.Mesh(
+  new THREE.TorusGeometry(0.33, 0.085, 18, 40),
+  new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.62, metalness: 0.02 })
+);
+golaMesh.name = 'Gola';
+golaMesh.rotation.x = Math.PI / 2;
+golaMesh.position.set(0, 1.86, 0.02);
+golaMesh.scale.set(1.12, 0.92, 1.0);
+group.add(golaMesh);
+
+// 5. Pescoço
+const pescocoMesh = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.22, 0.27, 0.48, 32),
+  new THREE.MeshStandardMaterial({ color: 0xdeb89a, roughness: 0.56, metalness: 0.02 })
+);
+pescocoMesh.name = 'Pescoco';
+pescocoMesh.position.set(0, 2.06, 0.02);
+group.add(pescocoMesh);
+
+// 6. Cabeça estilizada
+const cabecaMesh = new THREE.Mesh(
+  new THREE.SphereGeometry(0.54, 42, 34),
+  new THREE.MeshStandardMaterial({ color: 0xe6c4a8, roughness: 0.52, metalness: 0.02 })
+);
+cabecaMesh.name = 'Cabeca';
+cabecaMesh.scale.set(0.88, 1.12, 0.94);
+cabecaMesh.position.set(0, 2.72, 0.03);
+group.add(cabecaMesh);
+
+// 7. Nariz esculpido
+const narizMesh = new THREE.Mesh(
+  new THREE.ConeGeometry(0.085, 0.24, 12),
+  new THREE.MeshStandardMaterial({ color: 0xdcb394, roughness: 0.54, metalness: 0.02 })
+);
+narizMesh.name = 'Nariz';
+narizMesh.rotation.x = 0.28;
+narizMesh.position.set(0, 2.64, 0.54);
+group.add(narizMesh);
+
+// 8. Orelha Esquerda e Orelha Direita
+const orelhaEsq = new THREE.Mesh(
+  new THREE.SphereGeometry(0.13, 20, 16),
+  new THREE.MeshStandardMaterial({ color: 0xdcb394, roughness: 0.56, metalness: 0.02 })
+);
+orelhaEsq.name = 'OrelhaEsquerda';
+orelhaEsq.scale.set(0.45, 1.05, 0.72);
+orelhaEsq.position.set(-0.48, 2.68, 0.0);
+group.add(orelhaEsq);
+
+const orelhaDir = new THREE.Mesh(
+  new THREE.SphereGeometry(0.13, 20, 16),
+  new THREE.MeshStandardMaterial({ color: 0xdcb394, roughness: 0.56, metalness: 0.02 })
+);
+orelhaDir.name = 'OrelhaDireita';
+orelhaDir.scale.set(0.45, 1.05, 0.72);
+orelhaDir.position.set(0.48, 2.68, 0.0);
+group.add(orelhaDir);
+
+// 9. Cabelo esculpido com volume superior
+const cabeloMesh = new THREE.Mesh(
+  new THREE.SphereGeometry(0.565, 38, 28, 0, Math.PI * 2, 0, Math.PI * 0.56),
+  new THREE.MeshStandardMaterial({ color: 0x3b2a22, roughness: 0.78, metalness: 0.04 })
+);
+cabeloMesh.name = 'Cabelo';
+cabeloMesh.scale.set(0.94, 1.15, 1.04);
+cabeloMesh.position.set(0, 2.79, -0.02);
+cabeloMesh.rotation.x = -0.22;
+group.add(cabeloMesh);
+
+// 10. Óculos com aros, ponte e hastes posicionados à frente do rosto
+const oculosMat = new THREE.MeshStandardMaterial({ color: 0x1e2430, roughness: 0.22, metalness: 0.86 });
+
+const aroEsq = new THREE.Mesh(new THREE.TorusGeometry(0.145, 0.024, 14, 32), oculosMat.clone());
+aroEsq.name = 'Oculos_AroEsquerdo';
+aroEsq.position.set(-0.185, 2.74, 0.56);
+group.add(aroEsq);
+
+const aroDir = new THREE.Mesh(new THREE.TorusGeometry(0.145, 0.024, 14, 32), oculosMat.clone());
+aroDir.name = 'Oculos_AroDireito';
+aroDir.position.set(0.185, 2.74, 0.56);
+group.add(aroDir);
+
+const ponteOculos = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.11, 12), oculosMat.clone());
+ponteOculos.name = 'Oculos_Ponte';
+ponteOculos.rotation.z = Math.PI / 2;
+ponteOculos.position.set(0, 2.76, 0.57);
+group.add(ponteOculos);
+
+const hasteEsq = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.58, 10), oculosMat.clone());
+hasteEsq.name = 'Oculos_HasteEsquerda';
+hasteEsq.rotation.x = Math.PI / 2;
+hasteEsq.rotation.z = -0.22;
+hasteEsq.position.set(-0.40, 2.74, 0.28);
+group.add(hasteEsq);
+
+const hasteDir = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.58, 10), oculosMat.clone());
+hasteDir.name = 'Oculos_HasteDireita';
+hasteDir.rotation.x = Math.PI / 2;
+hasteDir.rotation.z = 0.22;
+hasteDir.position.set(0.40, 2.74, 0.28);
+group.add(hasteDir);
+`;
+
+    // Application State
+    let currentModelCode = DEFAULT_MODEL_CODE;
+    let selectedPartName = null; // null => "Todas as peças"
+    let wireframeEnabled = false;
+    let gridVisible = true;
+    let isBusy = false;
+
+    // Chat & Attachments State
+    let chatHistory = []; // Gemini API REST format: { role: 'user' | 'model', parts: [...] }
+    let pendingAttachments = []; // { id, name, mimeType, base64, dataUrl, kind: 'image'|'audio'|'file' }
+    let textureRefPhoto = null; // { name, mimeType, base64, dataUrl }
+
+    // Audio Recording State
+    let mediaRecorder = null;
+    let recordedChunks = [];
+    let recordingStream = null;
+    let recordingTimerInterval = null;
+    let recordingSeconds = 0;
+
+    // =========================================================================
+    // 2. REFERÊNCIAS DO DOM
+    // =========================================================================
+    const el = {
+      appShell: document.getElementById('appShell'),
+      apiKeyInput: document.getElementById('apiKeyInput'),
+      btnSaveKey: document.getElementById('btnSaveKey'),
+      modelSelect: document.getElementById('modelSelect'),
+      btnFetchModels: document.getElementById('btnFetchModels'),
+      exportHeightMm: document.getElementById('exportHeightMm'),
+      btnExportStl: document.getElementById('btnExportStl'),
+      btnExport3mf: document.getElementById('btnExport3mf'),
+
+      viewportMount: document.getElementById('viewportCanvasMount'),
+      btnResetCamera: document.getElementById('btnResetCamera'),
+      btnToggleWireframe: document.getElementById('btnToggleWireframe'),
+      btnToggleGrid: document.getElementById('btnToggleGrid'),
+      statParts: document.getElementById('statParts'),
+      statTriangles: document.getElementById('statTriangles'),
+      statSelected: document.getElementById('statSelected'),
+      viewportLoading: document.getElementById('viewportLoading'),
+      loadingMessage: document.getElementById('loadingMessage'),
+      toastContainer: document.getElementById('toastContainer'),
+
+      tabBtnModeling: document.getElementById('tabBtnModeling'),
+      tabBtnTexturing: document.getElementById('tabBtnTexturing'),
+      tabPanelModeling: document.getElementById('tabPanelModeling'),
+      tabPanelTexturing: document.getElementById('tabPanelTexturing'),
+
+      btnClearChat: document.getElementById('btnClearChat'),
+      chatMessages: document.getElementById('chatMessages'),
+      chkTextureFromImage: document.getElementById('chkTextureFromImage'),
+      recordingBanner: document.getElementById('recordingBanner'),
+      recTimer: document.getElementById('recTimer'),
+      chatAttachmentChips: document.getElementById('chatAttachmentChips'),
+      chatFileInput: document.getElementById('chatFileInput'),
+      btnAttachFiles: document.getElementById('btnAttachFiles'),
+      btnRecordVoice: document.getElementById('btnRecordVoice'),
+      chatInput: document.getElementById('chatInput'),
+      btnSendChat: document.getElementById('btnSendChat'),
+
+      partsList: document.getElementById('partsList'),
+      partsCountLabel: document.getElementById('partsCountLabel'),
+      aiTexturePrompt: document.getElementById('aiTexturePrompt'),
+      textureRefFileInput: document.getElementById('textureRefFileInput'),
+      textureRefChipContainer: document.getElementById('textureRefChipContainer'),
+      btnTextureRefPhoto: document.getElementById('btnTextureRefPhoto'),
+      btnApplyAiTexture: document.getElementById('btnApplyAiTexture'),
+
+      manualTargetLabel: document.getElementById('manualTargetLabel'),
+      manualColorPicker: document.getElementById('manualColorPicker'),
+      manualColorHex: document.getElementById('manualColorHex'),
+      manualRoughness: document.getElementById('manualRoughness'),
+      manualRoughnessVal: document.getElementById('manualRoughnessVal'),
+      manualMetalness: document.getElementById('manualMetalness'),
+      manualMetalnessVal: document.getElementById('manualMetalnessVal'),
+      uvTextureInput: document.getElementById('uvTextureInput'),
+      btnUploadUvTexture: document.getElementById('btnUploadUvTexture'),
+      btnRemoveUvTexture: document.getElementById('btnRemoveUvTexture'),
+      proceduralButtons: document.getElementById('proceduralButtons'),
+      btnApplyManualAll: document.getElementById('btnApplyManualAll'),
+
+      codeEditorTextarea: document.getElementById('codeEditorTextarea'),
+      btnRerunCode: document.getElementById('btnRerunCode')
+    };
+
+    // =========================================================================
+    // 3. NOTIFICAÇÕES (TOASTS) E LOADING OVERLAY
+    // =========================================================================
+    function showToast(message, type = 'info', durationMs = 4200) {
+      const toast = document.createElement('div');
+      toast.className = `toast ${type === 'success' ? 'toast-success' : type === 'error' ? 'toast-error' : ''}`;
+      toast.textContent = message;
+      el.toastContainer.appendChild(toast);
+      window.setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.2s ease';
+        window.setTimeout(() => toast.remove(), 220);
+      }, durationMs);
+    }
+
+    function setLoading(active, message = 'Processando...') {
+      isBusy = active;
+      el.loadingMessage.textContent = message;
+      el.viewportLoading.classList.toggle('is-visible', active);
+      el.btnSendChat.disabled = active;
+      el.btnApplyAiTexture.disabled = active;
+      el.btnExportStl.disabled = active;
+      el.btnExport3mf.disabled = active;
+      el.btnFetchModels.disabled = active;
+      el.btnRerunCode.disabled = active;
+    }
+
+    // =========================================================================
+    // 4. CONFIGURAÇÃO THREE.JS (MODELO 100% ESTÁTICO + RENDER SOB DEMANDA)
+    // =========================================================================
+    const isSoftwareGl = (() => {
+      try {
+        const probeCanvas = document.createElement('canvas');
+        const gl = probeCanvas.getContext('webgl2') || probeCanvas.getContext('webgl');
+        if (!gl) return true;
+        const ext = gl.getExtension('WEBGL_debug_renderer_info');
+        const param = ext ? ext.UNMASKED_RENDERER_WEBGL : gl.RENDERER;
+        const gpu = String(gl.getParameter(param) || '');
+        gl.getExtension('WEBGL_lose_context')?.loseContext();
+        return /SwiftShader|llvmpipe|softpipe|Software|Basic Render/i.test(gpu);
+      } catch {
+        return true;
+      }
+    })();
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0f1219);
+    scene.fog = new THREE.FogExp2(0x0f1219, 0.032);
+
+    const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 200);
+    camera.position.set(3.6, 2.8, 4.4);
+
+    const renderer = new THREE.WebGLRenderer({
+      antialias: !isSoftwareGl,
+      powerPreference: 'high-performance'
+    });
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
+    renderer.setPixelRatio(isSoftwareGl ? 1 : Math.min(window.devicePixelRatio || 1, 2));
+    renderer.shadowMap.enabled = !isSoftwareGl;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    el.viewportMount.appendChild(renderer.domElement);
+
+    // Studio Environment Reflection (PMREM RoomEnvironment)
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    const roomEnvTexture = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+    scene.environment = roomEnvTexture;
+    pmremGenerator.dispose();
+
+    // Studio Lighting (Hemisphere + Warm Key with Shadow + Cool Fill + Subtle Rim)
+    const hemiLight = new THREE.HemisphereLight(0xdce9ff, 0x262934, 0.8);
+    scene.add(hemiLight);
+
+    const keyLight = new THREE.DirectionalLight(0xfff4e6, 2.1);
+    keyLight.position.set(4.5, 8.5, 5.5);
+    keyLight.castShadow = !isSoftwareGl;
+    keyLight.shadow.mapSize.set(1024, 1024);
+    keyLight.shadow.camera.near = 1;
+    keyLight.shadow.camera.far = 25;
+    keyLight.shadow.camera.left = -4.5;
+    keyLight.shadow.camera.right = 4.5;
+    keyLight.shadow.camera.top = 5.5;
+    keyLight.shadow.camera.bottom = -3.5;
+    keyLight.shadow.bias = -0.0005;
+    keyLight.shadow.normalBias = 0.02;
+    scene.add(keyLight);
+
+    const fillLight = new THREE.DirectionalLight(0xb8d4ff, 0.85);
+    fillLight.position.set(-5.5, 4.0, -3.5);
+    scene.add(fillLight);
+
+    const rimLight = new THREE.DirectionalLight(0xeef5ff, 0.55);
+    rimLight.position.set(0, 5.0, -6.5);
+    scene.add(rimLight);
+
+    // Print Bed Grid & Soft Contact Shadow Disc
+    const gridHelper = new THREE.GridHelper(10, 20, 0x3b445a, 0x202533);
+    gridHelper.position.y = 0;
+    scene.add(gridHelper);
+
+    // Ground plane receiving shadow + soft radial contact shadow
+    const contactCanvas = document.createElement('canvas');
+    contactCanvas.width = 256;
+    contactCanvas.height = 256;
+    const cCtx = contactCanvas.getContext('2d');
+    const cGrad = cCtx.createRadialGradient(128, 128, 12, 128, 128, 122);
+    cGrad.addColorStop(0, 'rgba(0, 0, 0, 0.45)');
+    cGrad.addColorStop(0.55, 'rgba(0, 0, 0, 0.18)');
+    cGrad.addColorStop(1, 'rgba(0, 0, 0, 0.0)');
+    cCtx.fillStyle = cGrad;
+    cCtx.fillRect(0, 0, 256, 256);
+    const contactTex = new THREE.CanvasTexture(contactCanvas);
+    const contactPlane = new THREE.Mesh(
+      new THREE.CircleGeometry(2.2, 48),
+      new THREE.MeshBasicMaterial({ map: contactTex, transparent: true, depthWrite: false })
+    );
+    contactPlane.rotation.x = -Math.PI / 2;
+    contactPlane.position.y = -0.006;
+    scene.add(contactPlane);
+
+    const shadowReceiver = new THREE.Mesh(
+      new THREE.PlaneGeometry(12, 12),
+      new THREE.ShadowMaterial({ opacity: 0.34 })
+    );
+    shadowReceiver.rotation.x = -Math.PI / 2;
+    shadowReceiver.position.y = -0.003;
+    shadowReceiver.receiveShadow = true;
+    scene.add(shadowReceiver);
+
+    // Static Model Group (ZERO animation on the model!)
+    const modelGroup = new THREE.Group();
+    modelGroup.name = 'Modelo3D';
+    scene.add(modelGroup);
+
+    // OrbitControls (Camera navigation ONLY)
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = !isSoftwareGl;
+    controls.dampingFactor = 0.08;
+    controls.minDistance = 0.5;
+    controls.maxDistance = 40;
+    controls.maxPolarAngle = Math.PI * 0.85;
+    controls.target.set(0, 1.5, 0);
+
+    // On-Demand Rendering Loop with Software-WebGL FenceSync Pacing
+    let renderFrameId = 0;
+    let renderBusy = false;
+    let renderDirty = false;
+    let dampingFramesRemaining = 0;
+
+    function afterDraw(cb) {
+      const gl = renderer.getContext();
+      if (gl && typeof gl.fenceSync === 'function') {
+        const sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+        gl.flush();
+        const poll = () => {
+          const state = sync && gl.getSyncParameter(sync, gl.SYNC_STATUS);
+          if (state === gl.UNSIGNALED) {
+            renderFrameId = window.setTimeout(poll, 5);
+          } else {
+            if (sync) gl.deleteSync(sync);
+            renderFrameId = window.setTimeout(cb, 60);
+          }
+        };
+        renderFrameId = window.setTimeout(poll, 5);
+      } else {
+        renderFrameId = window.setTimeout(cb, 60);
+      }
+    }
+
+    function requestRender() {
+      if (renderBusy) {
+        renderDirty = true;
+        return;
+      }
+      renderBusy = true;
+      renderFrameId = window.requestAnimationFrame(() => {
+        renderDirty = false;
+        const changed = controls.update();
+        renderer.render(scene, camera);
+        const done = () => {
+          renderBusy = false;
+          if (renderDirty) {
+            requestRender();
+          } else if (!isSoftwareGl && controls.enableDamping && (changed || dampingFramesRemaining > 0)) {
+            if (dampingFramesRemaining > 0) dampingFramesRemaining--;
+            requestRender();
+          }
+        };
+        if (isSoftwareGl) {
+          afterDraw(done);
+        } else {
+          done();
+        }
+      });
+    }
+
+    controls.addEventListener('change', () => {
+      if (!isSoftwareGl && controls.enableDamping) {
+        dampingFramesRemaining = 12;
+      }
+      requestRender();
+    });
+
+    function resizeViewport() {
+      const rect = el.viewportMount.getBoundingClientRect();
+      const width = Math.max(1, Math.floor(rect.width));
+      const height = Math.max(1, Math.floor(rect.height));
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      renderer.setSize(width, height, false);
+      requestRender();
+    }
+
+    const resizeObserver = new ResizeObserver(() => resizeViewport());
+    resizeObserver.observe(el.viewportMount);
+    window.addEventListener('resize', resizeViewport);
+
+    renderer.domElement.addEventListener('webglcontextlost', (e) => {
+      e.preventDefault();
+      showToast('Contexto WebGL perdido temporariamente. Tentando restaurar...', 'error');
+    });
+    renderer.domElement.addEventListener('webglcontextrestored', () => {
+      requestRender();
+    });
+
+    // =========================================================================
+    // 5. GERENCIAMENTO DE PEÇAS, EXECUÇÃO SEGURA DE CÓDIGO 3D E RAYCASTING
+    // =========================================================================
+    let modelMeshes = [];
+
+    function disposeObject3D(obj) {
+      obj.traverse((child) => {
+        if (child.isMesh) {
+          if (child.geometry) child.geometry.dispose();
+          const mats = Array.isArray(child.material) ? child.material : [child.material];
+          mats.forEach((m) => {
+            if (!m) return;
+            const maps = ['map', 'bumpMap', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap'];
+            maps.forEach((k) => {
+              if (m[k] && typeof m[k].dispose === 'function') m[k].dispose();
+            });
+            m.dispose();
+          });
+        }
+      });
+    }
+
+    function ensureUniqueMaterial(mesh) {
+      if (Array.isArray(mesh.material)) {
+        mesh.material = mesh.material[0] ? mesh.material[0].clone() : new THREE.MeshStandardMaterial({ color: 0x9aa3b2, roughness: 0.55, metalness: 0.1 });
+      } else if (!mesh.material) {
+        mesh.material = new THREE.MeshStandardMaterial({ color: 0x9aa3b2, roughness: 0.55, metalness: 0.1 });
+      } else {
+        mesh.material = mesh.material.clone();
+      }
+      if (!mesh.material.color) {
+        mesh.material.color = new THREE.Color(0x9aa3b2);
+      }
+      if (typeof mesh.material.roughness !== 'number') mesh.material.roughness = 0.55;
+      if (typeof mesh.material.metalness !== 'number') mesh.material.metalness = 0.1;
+      if (!mesh.material.emissive) mesh.material.emissive = new THREE.Color(0x000000);
+      mesh.userData.baseEmissiveHex = mesh.material.emissive.getHex();
+      mesh.userData.baseEmissiveIntensity = mesh.material.emissiveIntensity ?? 1;
+      return mesh.material;
+    }
+
+    function groundAndCenterModelGroup() {
+      modelGroup.position.set(0, 0, 0);
+      modelGroup.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(modelGroup);
+      if (box.isEmpty()) return;
+      const center = new THREE.Vector3();
+      const size = new THREE.Vector3();
+      box.getCenter(center);
+      box.getSize(size);
+      modelGroup.position.set(-center.x, -box.min.y, -center.z);
+      modelGroup.updateMatrixWorld(true);
+
+      // Adapt contact shadow disc size to footprint
+      const footprint = Math.max(size.x, size.z, 1.0);
+      contactPlane.scale.setScalar(Math.max(0.55, footprint * 0.72));
+    }
+
+    function fitCameraToModel() {
+      modelGroup.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(modelGroup);
+      if (box.isEmpty()) {
+        camera.position.set(3.5, 2.5, 4.2);
+        controls.target.set(0, 1.0, 0);
+        controls.update();
+        requestRender();
+        return;
+      }
+      const center = new THREE.Vector3();
+      const size = new THREE.Vector3();
+      box.getCenter(center);
+      box.getSize(size);
+
+      const maxDim = Math.max(size.x, size.y, size.z, 0.5);
+      const fovRad = THREE.MathUtils.degToRad(camera.fov);
+      const dist = (maxDim / (2 * Math.tan(fovRad / 2))) * 1.65;
+
+      controls.target.copy(center);
+      camera.position.set(
+        center.x + dist * 0.58,
+        center.y + dist * 0.34,
+        center.z + dist * 0.86
+      );
+      camera.near = Math.max(0.01, dist * 0.005);
+      camera.far = Math.max(100, dist * 20);
+      camera.updateProjectionMatrix();
+      controls.update();
+      requestRender();
+    }
+
+    function computeModelStats() {
+      let totalTriangles = 0;
+      for (const mesh of modelMeshes) {
+        const geo = mesh.geometry;
+        if (!geo) continue;
+        if (geo.index) {
+          totalTriangles += Math.floor(geo.index.count / 3);
+        } else if (geo.attributes.position) {
+          totalTriangles += Math.floor(geo.attributes.position.count / 3);
+        }
+      }
+      el.statParts.textContent = String(modelMeshes.length);
+      el.statTriangles.textContent = totalTriangles.toLocaleString('pt-BR');
+      el.statSelected.textContent = selectedPartName || 'Todas as peças';
+      el.partsCountLabel.textContent = `${modelMeshes.length} ${modelMeshes.length === 1 ? 'peça' : 'peças'}`;
+      el.appShell.dataset.partsCount = String(modelMeshes.length);
+      el.appShell.dataset.trianglesCount = String(totalTriangles);
+      el.appShell.dataset.selectedPart = selectedPartName || 'Todas as peças';
+    }
+
+    function refreshModelMeshesIndex() {
+      const usedNames = new Map();
+      modelMeshes = [];
+      let autoIdx = 1;
+
+      modelGroup.traverse((child) => {
+        if (!child.isMesh) return;
+        let baseName = (child.name || '').trim();
+        if (!baseName) {
+          baseName = `Peca_${autoIdx++}`;
+        }
+        const count = usedNames.get(baseName) || 0;
+        usedNames.set(baseName, count + 1);
+        child.name = count === 0 ? baseName : `${baseName}_${count + 1}`;
+
+        child.castShadow = !isSoftwareGl;
+        child.receiveShadow = !isSoftwareGl;
+        ensureUniqueMaterial(child);
+        child.material.wireframe = wireframeEnabled;
+        modelMeshes.push(child);
+      });
+    }
+
+    let selectionBoxHelper = null;
+
+    function applySelectionHighlight() {
+      if (selectionBoxHelper) {
+        scene.remove(selectionBoxHelper);
+        selectionBoxHelper.geometry.dispose();
+        selectionBoxHelper.material.dispose();
+        selectionBoxHelper = null;
+      }
+
+      for (const mesh of modelMeshes) {
+        const mat = mesh.material;
+        if (!mat || !mat.emissive) continue;
+        if (selectedPartName && mesh.name === selectedPartName) {
+          // Subtle neutral luminance lift + CAD bounding box so true material color is never distorted
+          mat.emissive.setHex(0xffffff);
+          mat.emissiveIntensity = 0.06;
+          selectionBoxHelper = new THREE.BoxHelper(mesh, 0x3b82f6);
+          selectionBoxHelper.raycast = () => {};
+          scene.add(selectionBoxHelper);
+        } else {
+          mat.emissive.setHex(mesh.userData.baseEmissiveHex ?? 0x000000);
+          mat.emissiveIntensity = mesh.userData.baseEmissiveIntensity ?? 1;
+        }
+      }
+      requestRender();
+    }
+
+    function getTargetMeshes() {
+      if (!selectedPartName) return modelMeshes;
+      const found = modelMeshes.filter((m) => m.name === selectedPartName);
+      return found.length ? found : modelMeshes;
+    }
+
+    function syncManualControlsFromSelection() {
+      const targets = getTargetMeshes();
+      el.manualTargetLabel.textContent = `Alvo: ${selectedPartName || 'Todas as peças'}`;
+      if (!targets.length) return;
+      const sample = targets[0].material;
+      if (!sample) return;
+
+      const hex = '#' + (sample.color ? sample.color.getHexString() : '8a92a0');
+      el.manualColorPicker.value = hex;
+      el.manualColorHex.textContent = hex.toUpperCase();
+
+      const rough = typeof sample.roughness === 'number' ? sample.roughness : 0.5;
+      const metal = typeof sample.metalness === 'number' ? sample.metalness : 0.1;
+      el.manualRoughness.value = rough.toFixed(2);
+      el.manualRoughnessVal.textContent = rough.toFixed(2);
+      el.manualMetalness.value = metal.toFixed(2);
+      el.manualMetalnessVal.textContent = metal.toFixed(2);
+
+      const preset = targets[0].userData.proceduralPreset || '';
+      el.proceduralButtons.querySelectorAll('.proc-btn').forEach((btn) => {
+        btn.classList.toggle('is-active', btn.dataset.preset === preset);
+      });
+    }
+
+    function renderPartsPills() {
+      el.partsList.innerHTML = '';
+
+      const allBtn = document.createElement('button');
+      allBtn.type = 'button';
+      allBtn.className = `part-pill ${selectedPartName === null ? 'is-selected' : ''}`;
+      allBtn.textContent = 'Todas as peças';
+      allBtn.addEventListener('click', () => selectPart(null));
+      el.partsList.appendChild(allBtn);
+
+      for (const mesh of modelMeshes) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `part-pill ${selectedPartName === mesh.name ? 'is-selected' : ''}`;
+        const dot = document.createElement('span');
+        dot.className = 'part-color-dot';
+        const hex = mesh.material && mesh.material.color ? '#' + mesh.material.color.getHexString() : '#8a92a0';
+        dot.style.backgroundColor = hex;
+        const label = document.createElement('span');
+        label.textContent = mesh.name;
+        btn.appendChild(dot);
+        btn.appendChild(label);
+        btn.addEventListener('click', () => selectPart(mesh.name));
+        el.partsList.appendChild(btn);
+      }
+    }
+
+    function selectPart(partName) {
+      if (partName && !modelMeshes.some((m) => m.name === partName)) {
+        selectedPartName = null;
+      } else {
+        selectedPartName = partName;
+      }
+      applySelectionHighlight();
+      computeModelStats();
+      renderPartsPills();
+      syncManualControlsFromSelection();
+    }
+
+    function executeModelCode(code, { refitCamera = true } = {}) {
+      const tempGroup = new THREE.Group();
+      try {
+        const fn = new Function('THREE', 'group', code);
+        fn(THREE, tempGroup);
+      } catch (err) {
+        disposeObject3D(tempGroup);
+        throw new Error(`Erro de sintaxe/execução no código 3D: ${err.message}`);
+      }
+
+      let meshCount = 0;
+      tempGroup.traverse((c) => { if (c.isMesh) meshCount++; });
+      if (meshCount === 0) {
+        disposeObject3D(tempGroup);
+        throw new Error('O código 3D executado não adicionou nenhuma peça (THREE.Mesh) ao grupo.');
+      }
+
+      // Swap cleanly into live modelGroup
+      disposeObject3D(modelGroup);
+      modelGroup.clear();
+      while (tempGroup.children.length > 0) {
+        modelGroup.add(tempGroup.children[0]);
+      }
+
+      currentModelCode = code;
+      el.codeEditorTextarea.value = code;
+
+      refreshModelMeshesIndex();
+      groundAndCenterModelGroup();
+
+      if (selectedPartName && !modelMeshes.some((m) => m.name === selectedPartName)) {
+        selectedPartName = null;
+      }
+
+      applySelectionHighlight();
+      computeModelStats();
+      renderPartsPills();
+      syncManualControlsFromSelection();
+
+      if (refitCamera) {
+        fitCameraToModel();
+      } else {
+        requestRender();
+      }
+    }
+
+    // Raycasting Selection on Canvas Click (ignoring Orbit drag)
+    const raycaster = new THREE.Raycaster();
+    const pointerNdc = new THREE.Vector2();
+    let pointerDownPos = null;
+
+    renderer.domElement.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      pointerDownPos = { x: e.clientX, y: e.clientY };
+    });
+
+    renderer.domElement.addEventListener('pointerup', (e) => {
+      if (e.button !== 0 || !pointerDownPos) return;
+      const dx = e.clientX - pointerDownPos.x;
+      const dy = e.clientY - pointerDownPos.y;
+      pointerDownPos = null;
+      if (Math.hypot(dx, dy) > 5) return; // Dragging camera, not clicking
+
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointerNdc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      pointerNdc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+      raycaster.setFromCamera(pointerNdc, camera);
+      const hits = raycaster.intersectObjects(modelMeshes, false);
+      if (hits.length > 0) {
+        selectPart(hits[0].object.name);
+      } else {
+        selectPart(null);
+      }
+    });
+
+    // =========================================================================
+    // 6. TEXTURAS PROCEDURAIS VIA CANVAS + AJUSTE MANUAL
+    // =========================================================================
+    function createProceduralTexturePair(preset) {
+      const size = 256;
+      const colorCanvas = document.createElement('canvas');
+      colorCanvas.width = size;
+      colorCanvas.height = size;
+      const ctx = colorCanvas.getContext('2d');
+
+      const bumpCanvas = document.createElement('canvas');
+      bumpCanvas.width = size;
+      bumpCanvas.height = size;
+      const bCtx = bumpCanvas.getContext('2d');
+
+      // Deterministic PRNG for clean repeatable surface patterns
+      let seed = 1337;
+      const rand = () => {
+        seed = (seed * 16807) % 2147483647;
+        return (seed - 1) / 2147483646;
+      };
+
+      if (preset === 'madeira') {
+        ctx.fillStyle = '#e8dfd4';
+        ctx.fillRect(0, 0, size, size);
+        bCtx.fillStyle = '#808080';
+        bCtx.fillRect(0, 0, size, size);
+
+        for (let y = 0; y < size; y++) {
+          const wave = Math.sin(y * 0.14) * 6 + Math.sin(y * 0.045) * 14;
+          const shade = Math.floor(206 + Math.sin((y + wave) * 0.25) * 26 + (rand() - 0.5) * 10);
+          ctx.fillStyle = `rgb(${shade}, ${Math.floor(shade * 0.93)}, ${Math.floor(shade * 0.85)})`;
+          ctx.fillRect(0, y, size, 1);
+
+          const bVal = Math.floor(128 + Math.sin((y + wave) * 0.25) * 44);
+          bCtx.fillStyle = `rgb(${bVal},${bVal},${bVal})`;
+          bCtx.fillRect(0, y, size, 1);
+        }
+        // Subtle fiber streaks
+        for (let i = 0; i < 65; i++) {
+          const y = rand() * size;
+          ctx.strokeStyle = `rgba(90, 62, 38, ${0.08 + rand() * 0.12})`;
+          ctx.lineWidth = 0.8 + rand() * 1.4;
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.bezierCurveTo(size * 0.33, y + (rand() - 0.5) * 10, size * 0.66, y + (rand() - 0.5) * 10, size, y);
+          ctx.stroke();
+        }
+      } else if (preset === 'marmore') {
+        ctx.fillStyle = '#f2f3f5';
+        ctx.fillRect(0, 0, size, size);
+        bCtx.fillStyle = '#888888';
+        bCtx.fillRect(0, 0, size, size);
+
+        for (let i = 0; i < 18; i++) {
+          ctx.strokeStyle = `rgba(110, 118, 132, ${0.12 + rand() * 0.22})`;
+          ctx.lineWidth = 0.8 + rand() * 3.2;
+          ctx.beginPath();
+          let x = rand() * size;
+          let y = 0;
+          ctx.moveTo(x, y);
+          while (y < size) {
+            y += 14;
+            x += (rand() - 0.48) * 28;
+            ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+
+          bCtx.strokeStyle = `rgba(70, 70, 70, 0.25)`;
+          bCtx.lineWidth = 1.5;
+          bCtx.stroke();
+        }
+      } else if (preset === 'pedra') {
+        const imgData = ctx.createImageData(size, size);
+        const bData = bCtx.createImageData(size, size);
+        for (let i = 0; i < size * size; i++) {
+          const n = rand();
+          const v = Math.floor(178 + (n - 0.5) * 78);
+          const idx = i * 4;
+          imgData.data[idx] = v;
+          imgData.data[idx + 1] = Math.max(0, v - 3);
+          imgData.data[idx + 2] = Math.max(0, v - 6);
+          imgData.data[idx + 3] = 255;
+
+          const bv = Math.floor(80 + n * 145);
+          bData.data[idx] = bv;
+          bData.data[idx + 1] = bv;
+          bData.data[idx + 2] = bv;
+          bData.data[idx + 3] = 255;
+        }
+        ctx.putImageData(imgData, 0, 0);
+        bCtx.putImageData(bData, 0, 0);
+      } else if (preset === 'metal') {
+        ctx.fillStyle = '#e4e7ec';
+        ctx.fillRect(0, 0, size, size);
+        bCtx.fillStyle = '#808080';
+        bCtx.fillRect(0, 0, size, size);
+
+        for (let y = 0; y < size; y++) {
+          const v = Math.floor(215 + (rand() - 0.5) * 38);
+          ctx.fillStyle = `rgb(${v},${v},${Math.min(255, v + 3)})`;
+          ctx.fillRect(0, y, size, 1);
+
+          const bv = Math.floor(128 + (rand() - 0.5) * 70);
+          bCtx.fillStyle = `rgb(${bv},${bv},${bv})`;
+          bCtx.fillRect(0, y, size, 1);
+        }
+      } else if (preset === 'fibra') {
+        const cell = 16;
+        for (let y = 0; y < size; y += cell) {
+          for (let x = 0; x < size; x += cell) {
+            const even = ((x / cell) + (y / cell)) % 2 === 0;
+            const grad = even
+              ? ctx.createLinearGradient(x, y, x + cell, y)
+              : ctx.createLinearGradient(x, y, x, y + cell);
+            grad.addColorStop(0, '#a8b0bc');
+            grad.addColorStop(0.5, '#eef2f7');
+            grad.addColorStop(1, '#9ba3b0');
+            ctx.fillStyle = grad;
+            ctx.fillRect(x, y, cell, cell);
+
+            bCtx.fillStyle = even ? '#c8c8c8' : '#707070';
+            bCtx.fillRect(x + 1, y + 1, cell - 2, cell - 2);
+          }
+        }
+      }
+
+      const maxAniso = renderer.capabilities.getMaxAnisotropy();
+      const map = new THREE.CanvasTexture(colorCanvas);
+      map.colorSpace = THREE.SRGBColorSpace;
+      map.wrapS = THREE.RepeatWrapping;
+      map.wrapT = THREE.RepeatWrapping;
+      map.repeat.set(2, 2);
+      map.anisotropy = maxAniso;
+
+      const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+      bumpMap.wrapS = THREE.RepeatWrapping;
+      bumpMap.wrapT = THREE.RepeatWrapping;
+      bumpMap.repeat.set(2, 2);
+      bumpMap.anisotropy = maxAniso;
+
+      return { map, bumpMap };
+    }
+
+    function clearMaterialTextures(mat) {
+      if (mat.map) {
+        mat.map.dispose();
+        mat.map = null;
+      }
+      if (mat.bumpMap) {
+        mat.bumpMap.dispose();
+        mat.bumpMap = null;
+      }
+      mat.needsUpdate = true;
+    }
+
+    function applyProceduralPresetToMeshes(meshes, preset) {
+      const defaults = {
+        liso: { roughness: 0.45, metalness: 0.08, bumpScale: 0 },
+        madeira: { roughness: 0.72, metalness: 0.02, bumpScale: 0.025 },
+        marmore: { roughness: 0.22, metalness: 0.04, bumpScale: 0.012 },
+        pedra: { roughness: 0.88, metalness: 0.02, bumpScale: 0.04 },
+        metal: { roughness: 0.26, metalness: 0.88, bumpScale: 0.015 },
+        fibra: { roughness: 0.36, metalness: 0.24, bumpScale: 0.028 }
+      };
+      const cfg = defaults[preset] || defaults.liso;
+
+      for (const mesh of meshes) {
+        mesh.material = mesh.material.clone();
+        clearMaterialTextures(mesh.material);
+        mesh.material.roughness = cfg.roughness;
+        mesh.material.metalness = cfg.metalness;
+        if (preset !== 'liso') {
+          const { map, bumpMap } = createProceduralTexturePair(preset);
+          mesh.material.map = map;
+          mesh.material.bumpMap = bumpMap;
+          mesh.material.bumpScale = cfg.bumpScale;
+        }
+        mesh.material.wireframe = wireframeEnabled;
+        mesh.material.needsUpdate = true;
+        mesh.userData.proceduralPreset = preset;
+      }
+      applySelectionHighlight();
+      syncManualControlsFromSelection();
+      renderPartsPills();
+      requestRender();
+    }
+
+    // Manual Color, Roughness, Metalness Handlers
+    el.manualColorPicker.addEventListener('input', () => {
+      const hex = el.manualColorPicker.value;
+      el.manualColorHex.textContent = hex.toUpperCase();
+      const targets = getTargetMeshes();
+      for (const mesh of targets) {
+        mesh.material = mesh.material.clone();
+        mesh.material.color.set(hex);
+        mesh.material.wireframe = wireframeEnabled;
+        mesh.material.needsUpdate = true;
+      }
+      applySelectionHighlight();
+      renderPartsPills();
+      requestRender();
+    });
+
+    el.manualRoughness.addEventListener('input', () => {
+      const val = parseFloat(el.manualRoughness.value);
+      el.manualRoughnessVal.textContent = val.toFixed(2);
+      for (const mesh of getTargetMeshes()) {
+        mesh.material = mesh.material.clone();
+        mesh.material.roughness = val;
+        mesh.material.wireframe = wireframeEnabled;
+      }
+      applySelectionHighlight();
+      requestRender();
+    });
+
+    el.manualMetalness.addEventListener('input', () => {
+      const val = parseFloat(el.manualMetalness.value);
+      el.manualMetalnessVal.textContent = val.toFixed(2);
+      for (const mesh of getTargetMeshes()) {
+        mesh.material = mesh.material.clone();
+        mesh.material.metalness = val;
+        mesh.material.wireframe = wireframeEnabled;
+      }
+      applySelectionHighlight();
+      requestRender();
+    });
+
+    // UV Texture Upload & Remove
+    el.btnUploadUvTexture.addEventListener('click', () => el.uvTextureInput.click());
+
+    el.uvTextureInput.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const targets = getTargetMeshes();
+          const maxAniso = renderer.capabilities.getMaxAnisotropy();
+          for (const mesh of targets) {
+            mesh.material = mesh.material.clone();
+            clearMaterialTextures(mesh.material);
+            const tex = new THREE.Texture(img);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.anisotropy = maxAniso;
+            tex.needsUpdate = true;
+            mesh.material.map = tex;
+            mesh.material.color.set(0xffffff);
+            mesh.material.wireframe = wireframeEnabled;
+            mesh.material.needsUpdate = true;
+            mesh.userData.proceduralPreset = 'uv';
+          }
+          applySelectionHighlight();
+          syncManualControlsFromSelection();
+          renderPartsPills();
+          requestRender();
+          showToast(`Textura UV "${file.name}" aplicada com sucesso.`, 'success');
+        };
+        img.onerror = () => showToast('Não foi possível carregar a imagem de textura.', 'error');
+        img.src = String(reader.result);
+      };
+      reader.readAsDataURL(file);
+      el.uvTextureInput.value = '';
+    });
+
+    el.btnRemoveUvTexture.addEventListener('click', () => {
+      for (const mesh of getTargetMeshes()) {
+        mesh.material = mesh.material.clone();
+        clearMaterialTextures(mesh.material);
+        mesh.userData.proceduralPreset = 'liso';
+      }
+      applySelectionHighlight();
+      syncManualControlsFromSelection();
+      requestRender();
+      showToast('Textura removida do alvo selecionado.', 'success');
+    });
+
+    el.proceduralButtons.addEventListener('click', (e) => {
+      const btn = e.target.closest('.proc-btn');
+      if (!btn) return;
+      const preset = btn.dataset.preset;
+      applyProceduralPresetToMeshes(getTargetMeshes(), preset);
+    });
+
+    el.btnApplyManualAll.addEventListener('click', () => {
+      if (!modelMeshes.length) return;
+      const sourceMesh = getTargetMeshes()[0];
+      const hex = el.manualColorPicker.value;
+      const rough = parseFloat(el.manualRoughness.value);
+      const metal = parseFloat(el.manualMetalness.value);
+      const preset = sourceMesh && sourceMesh.userData.proceduralPreset;
+      const hasUvMap = preset === 'uv' && sourceMesh && sourceMesh.material && sourceMesh.material.map;
+
+      for (const mesh of modelMeshes) {
+        mesh.material = mesh.material.clone();
+        clearMaterialTextures(mesh.material);
+        mesh.material.color.set(hex);
+        mesh.material.roughness = rough;
+        mesh.material.metalness = metal;
+        if (hasUvMap) {
+          const clonedTex = sourceMesh.material.map.clone();
+          clonedTex.needsUpdate = true;
+          mesh.material.map = clonedTex;
+          mesh.userData.proceduralPreset = 'uv';
+        } else if (preset && preset !== 'liso' && preset !== 'uv') {
+          const { map, bumpMap } = createProceduralTexturePair(preset);
+          mesh.material.map = map;
+          mesh.material.bumpMap = bumpMap;
+          mesh.material.bumpScale = sourceMesh.material.bumpScale || 0.02;
+          mesh.userData.proceduralPreset = preset;
+        } else {
+          mesh.userData.proceduralPreset = 'liso';
+        }
+        mesh.material.wireframe = wireframeEnabled;
+        mesh.material.needsUpdate = true;
+      }
+      applySelectionHighlight();
+      renderPartsPills();
+      requestRender();
+      showToast('Material atual aplicado em todas as peças do modelo.', 'success');
+    });
+
+    // =========================================================================
+    // 7. CONEXÃO COM A API REST DO GOOGLE AI STUDIO (GEMINI)
+    // =========================================================================
+    function getApiKey() {
+      return el.apiKeyInput.value.trim();
+    }
+
+    function getSelectedModel() {
+      return el.modelSelect.value || 'gemini-4-neon';
+    }
+
+    function loadSavedSettings() {
+      const savedKey = localStorage.getItem(STORAGE_KEY_API);
+      if (savedKey) {
+        el.apiKeyInput.value = savedKey;
+      }
+      const savedModel = localStorage.getItem(STORAGE_KEY_MODEL);
+      if (savedModel) {
+        const exists = Array.from(el.modelSelect.options).some((opt) => opt.value === savedModel);
+        if (exists) el.modelSelect.value = savedModel;
+      }
+    }
+
+    el.btnSaveKey.addEventListener('click', () => {
+      const key = getApiKey();
+      if (!key) {
+        localStorage.removeItem(STORAGE_KEY_API);
+        showToast('API Key removida do armazenamento local.', 'info');
+        return;
+      }
+      localStorage.setItem(STORAGE_KEY_API, key);
+      showToast('API Key salva com segurança no navegador (localStorage).', 'success');
+    });
+
+    el.modelSelect.addEventListener('change', () => {
+      localStorage.setItem(STORAGE_KEY_MODEL, el.modelSelect.value);
+    });
+
+    el.btnFetchModels.addEventListener('click', async () => {
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        showToast('Cole e salve sua API Key do Google AI Studio antes de buscar os modelos.', 'error');
+        el.apiKeyInput.focus();
+        return;
+      }
+
+      setLoading(true, 'Consultando modelos disponíveis na sua conta...');
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`;
+        const resp = await fetch(url);
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+          const msg = data?.error?.message || `Erro HTTP ${resp.status}`;
+          throw new Error(msg);
+        }
+
+        const compatible = (data.models || [])
+          .filter((m) => Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes('generateContent'))
+          .map((m) => String(m.name || '').replace(/^models\//, ''))
+          .filter(Boolean);
+
+        if (!compatible.length) {
+          throw new Error('Nenhum modelo compatível com generateContent foi retornado pela API.');
+        }
+
+        const previous = getSelectedModel();
+        const merged = Array.from(new Set([...DEFAULT_MODELS.filter((m) => compatible.includes(m)), ...compatible]));
+        el.modelSelect.innerHTML = '';
+        for (const modelName of merged) {
+          const opt = document.createElement('option');
+          opt.value = modelName;
+          opt.textContent = modelName;
+          el.modelSelect.appendChild(opt);
+        }
+
+        if (merged.includes(previous)) {
+          el.modelSelect.value = previous;
+        } else if (merged.includes('gemini-4-neon')) {
+          el.modelSelect.value = 'gemini-4-neon';
+        }
+        localStorage.setItem(STORAGE_KEY_MODEL, el.modelSelect.value);
+        showToast(`${merged.length} modelos compatíveis carregados da sua conta.`, 'success');
+      } catch (err) {
+        showToast(`Falha ao buscar modelos: ${err.message}`, 'error', 5500);
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    async function callGeminiGenerateContent({ systemInstruction, contents }) {
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        throw new Error('Chave de API vazia. Cole sua API Key do Google AI Studio na barra superior e clique em Salvar.');
+      }
+      const model = getSelectedModel();
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+      const body = {
+        systemInstruction: {
+          parts: [{ text: systemInstruction }]
+        },
+        contents,
+        generationConfig: {
+          temperature: 0.45
+        }
+      };
+
+      const resp = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        const apiMsg = data?.error?.message || resp.statusText || 'Erro desconhecido';
+        throw new Error(`Erro HTTP ${resp.status} da API Gemini: ${apiMsg}`);
+      }
+
+      const candidate = data?.candidates?.[0];
+      if (!candidate || !candidate.content || !Array.isArray(candidate.content.parts)) {
+        const reason = candidate?.finishReason || data?.promptFeedback?.blockReason || 'Resposta vazia';
+        throw new Error(`A IA não retornou conteúdo válido (${reason}).`);
+      }
+
+      const textParts = candidate.content.parts
+        .filter((p) => typeof p.text === 'string')
+        .map((p) => p.text);
+
+      return textParts.join('\n').trim();
+    }
+
+    function extractJsCodeBlock(replyText) {
+      if (!replyText) return null;
+      const match = replyText.match(/```(?:javascript|js)?\s*\n([\s\S]*?)```/i);
+      if (match && match[1].trim()) {
+        return match[1].trim();
+      }
+      return null;
+    }
+
+    function stripCodeBlocks(replyText) {
+      return replyText.replace(/```(?:javascript|js)?\s*\n[\s\S]*?```/gi, '').trim();
+    }
+
+    // =========================================================================
+    // 8. ABA 1: CHAT DE MODELAGEM 3D (TEXTO, ANEXOS E GRAVAÇÃO DE VOZ)
+    // =========================================================================
+    function buildModelingSystemInstruction(applyTexturesFromImage) {
+      const textureRule = applyTexturesFromImage
+        ? 'CORES E TEXTURAS: Analise cuidadosamente as imagens, descrições e referências enviadas e aplique cores realistas, roughness, metalness e, quando útil, texturas procedurais via THREE.CanvasTexture em cada peça.'
+        : 'MODO ESCULTURA CINZA: Foque exclusivamente na geometria 3D. Use material cinza neutro de escultura (THREE.MeshStandardMaterial({ color: 0x9aa3b2, roughness: 0.65, metalness: 0.05 })) em todas as peças.';
+
+      return [
+        'Você é um especialista em modelagem 3D procedural em Three.js para impressão 3D estática.',
+        'REGRA ABSOLUTA: O modelo DEVE ser 100% ESTÁTICO. É PROIBIDO criar qualquer animação, requestAnimationFrame, setInterval, setTimeout ou movimento contínuo.',
+        'Seu código será executado dentro de: new Function("THREE", "group", code).',
+        'Adicione todas as peças (THREE.Mesh) dentro de `group` (um THREE.Group já existente). Não crie Scene, Camera, Renderer ou Controls.',
+        'OBRIGATÓRIO: Todo THREE.Mesh criado deve possuir um `mesh.name` claro e descritivo em Português do Brasil (ex: "Base", "Cabeca", "Cabelo", "Oculos", "Torso", "BracoEsquerdo").',
+        'Cada THREE.Mesh deve ter sua própria instância de THREE.MeshStandardMaterial para permitir edição individual de cor/textura.',
+        'Construa geometrias ricas, coesas e sólidas (use LatheGeometry, ExtrudeGeometry com bevel, TubeGeometry, CylinderGeometry, SphereGeometry, TorusGeometry, etc.) com a base apoiada em y = 0, sem peças flutuando desconectadas.',
+        textureRule,
+        'EDIÇÕES ITERATIVAS: Quando o usuário pedir ajustes ou modificações em um modelo já existente, mantenha o modelo atual enviado no contexto e altere SOMENTE o que foi solicitado, devolvendo o código completo atualizado.',
+        'FORMATO DE RESPOSTA: Escreva 1 a 2 frases curtas em pt-BR explicando o que foi modelado/ajustado, seguidas por EXATAMENTE UM bloco ```javascript ... ``` completo e pronto para execução, sem abreviações.'
+      ].join('\n');
+    }
+
+    function appendChatMessage({ role, text, attachments = [] }) {
+      const bubble = document.createElement('div');
+      bubble.className = `msg-bubble ${
+        role === 'user' ? 'msg-user' :
+        role === 'ai' ? 'msg-ai' :
+        role === 'error' ? 'msg-error' : 'msg-system'
+      }`;
+
+      const roleLabel = document.createElement('span');
+      roleLabel.className = 'msg-role-label';
+      roleLabel.textContent =
+        role === 'user' ? 'Você' :
+        role === 'ai' ? 'Estúdio IA' :
+        role === 'error' ? 'Erro' : 'Sistema';
+      bubble.appendChild(roleLabel);
+
+      if (text) {
+        const p = document.createElement('div');
+        p.style.whiteSpace = 'pre-wrap';
+        p.textContent = text;
+        bubble.appendChild(p);
+      }
+
+      if (attachments.length > 0) {
+        const grid = document.createElement('div');
+        grid.className = 'msg-attachments-grid';
+        for (const att of attachments) {
+          if (att.kind === 'image') {
+            const img = document.createElement('img');
+            img.src = att.dataUrl;
+            img.alt = att.name;
+            img.className = 'msg-thumb';
+            grid.appendChild(img);
+          } else if (att.kind === 'audio') {
+            const wrap = document.createElement('div');
+            wrap.style.width = '100%';
+            const tag = document.createElement('span');
+            tag.className = 'msg-file-tag';
+            tag.textContent = `🎙️ ${att.name}`;
+            const audio = document.createElement('audio');
+            audio.controls = true;
+            audio.src = att.dataUrl;
+            audio.className = 'msg-audio-player';
+            wrap.appendChild(tag);
+            wrap.appendChild(audio);
+            grid.appendChild(wrap);
+          } else {
+            const tag = document.createElement('span');
+            tag.className = 'msg-file-tag';
+            tag.textContent = `📄 ${att.name}`;
+            grid.appendChild(tag);
+          }
+        }
+        bubble.appendChild(grid);
+      }
+
+      el.chatMessages.appendChild(bubble);
+      el.chatMessages.scrollTop = el.chatMessages.scrollHeight;
+    }
+
+    function renderAttachmentChips() {
+      el.chatAttachmentChips.innerHTML = '';
+      el.chatAttachmentChips.classList.toggle('has-items', pendingAttachments.length > 0);
+
+      for (const att of pendingAttachments) {
+        const chip = document.createElement('div');
+        chip.className = 'attach-chip';
+
+        if (att.kind === 'image') {
+          const img = document.createElement('img');
+          img.src = att.dataUrl;
+          img.alt = att.name;
+          chip.appendChild(img);
+        } else {
+          const icon = document.createElement('span');
+          icon.textContent = att.kind === 'audio' ? '🎙️' : '📄';
+          chip.appendChild(icon);
+        }
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'attach-chip-name';
+        nameSpan.textContent = att.name;
+        chip.appendChild(nameSpan);
+
+        const rmBtn = document.createElement('button');
+        rmBtn.type = 'button';
+        rmBtn.className = 'attach-chip-remove';
+        rmBtn.setAttribute('aria-label', `Remover anexo ${att.name}`);
+        rmBtn.textContent = '×';
+        rmBtn.addEventListener('click', () => {
+          pendingAttachments = pendingAttachments.filter((item) => item.id !== att.id);
+          renderAttachmentChips();
+        });
+        chip.appendChild(rmBtn);
+
+        el.chatAttachmentChips.appendChild(chip);
+      }
+    }
+
+    function readFileAsAttachment(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = String(reader.result || '');
+          const commaIdx = dataUrl.indexOf(',');
+          const base64 = commaIdx >= 0 ? dataUrl.slice(commaIdx + 1) : '';
+          let mimeType = file.type;
+          if (!mimeType) {
+            const lower = file.name.toLowerCase();
+            if (lower.endsWith('.pdf')) mimeType = 'application/pdf';
+            else if (lower.endsWith('.json')) mimeType = 'application/json';
+            else if (lower.endsWith('.csv')) mimeType = 'text/csv';
+            else if (lower.endsWith('.png')) mimeType = 'image/png';
+            else if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) mimeType = 'image/jpeg';
+            else if (lower.endsWith('.webp')) mimeType = 'image/webp';
+            else mimeType = 'text/plain';
+          }
+          const kind = mimeType.startsWith('image/')
+            ? 'image'
+            : mimeType.startsWith('audio/')
+            ? 'audio'
+            : 'file';
+
+          resolve({
+            id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+            name: file.name,
+            mimeType,
+            base64,
+            dataUrl,
+            kind
+          });
+        };
+        reader.onerror = () => reject(new Error(`Falha ao ler arquivo ${file.name}`));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    el.btnAttachFiles.addEventListener('click', () => el.chatFileInput.click());
+
+    el.chatFileInput.addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files || []);
+      if (!files.length) return;
+      try {
+        for (const file of files) {
+          const att = await readFileAsAttachment(file);
+          pendingAttachments.push(att);
+        }
+        renderAttachmentChips();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+      el.chatFileInput.value = '';
+    });
+
+    // Voice Recording via MediaRecorder (Native inlineData Audio for Gemini)
+    function formatRecTime(sec) {
+      const m = String(Math.floor(sec / 60)).padStart(2, '0');
+      const s = String(sec % 60).padStart(2, '0');
+      return `${m}:${s}`;
+    }
+
+    function stopRecordingCleanup() {
+      if (recordingTimerInterval) {
+        clearInterval(recordingTimerInterval);
+        recordingTimerInterval = null;
+      }
+      if (recordingStream) {
+        recordingStream.getTracks().forEach((t) => t.stop());
+        recordingStream = null;
+      }
+      el.recordingBanner.classList.remove('is-recording');
+      el.btnRecordVoice.classList.remove('btn-record-active');
+      el.btnRecordVoice.textContent = '🎙️';
+      el.btnRecordVoice.setAttribute('aria-label', 'Gravar voz');
+      el.btnRecordVoice.title = 'Gravar comando de voz (enviado direto ao Gemini)';
+    }
+
+    el.btnRecordVoice.addEventListener('click', async () => {
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        return;
+      }
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showToast('Gravação de áudio não suportada neste navegador ou contexto inseguro.', 'error');
+        return;
+      }
+
+      try {
+        recordingStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mimeCandidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
+        const chosenMime = mimeCandidates.find((m) => typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(m)) || '';
+
+        recordedChunks = [];
+        mediaRecorder = chosenMime
+          ? new MediaRecorder(recordingStream, { mimeType: chosenMime })
+          : new MediaRecorder(recordingStream);
+
+        mediaRecorder.ondataavailable = (ev) => {
+          if (ev.data && ev.data.size > 0) recordedChunks.push(ev.data);
+        };
+
+        mediaRecorder.onstop = async () => {
+          const finalMime = (mediaRecorder.mimeType || chosenMime || 'audio/webm').split(';')[0];
+          const ext = finalMime.includes('ogg') ? 'ogg' : finalMime.includes('mp4') ? 'm4a' : 'webm';
+          const blob = new Blob(recordedChunks, { type: finalMime });
+          const durLabel = formatRecTime(recordingSeconds);
+          stopRecordingCleanup();
+          mediaRecorder = null;
+
+          if (blob.size === 0) return;
+
+          const reader = new FileReader();
+          reader.onload = () => {
+            const dataUrl = String(reader.result || '');
+            const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
+            pendingAttachments.push({
+              id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+              name: `audio-voz-${durLabel.replace(':', 'm')}s.${ext}`,
+              mimeType: finalMime,
+              base64,
+              dataUrl,
+              kind: 'audio'
+            });
+            renderAttachmentChips();
+            showToast('Áudio gravado e anexado. Clique em Enviar para enviar ao Gemini.', 'success');
+          };
+          reader.readAsDataURL(blob);
+        };
+
+        mediaRecorder.start();
+        recordingSeconds = 0;
+        el.recTimer.textContent = '00:00';
+        el.recordingBanner.classList.add('is-recording');
+        el.btnRecordVoice.classList.add('btn-record-active');
+        el.btnRecordVoice.textContent = '⏹️';
+        el.btnRecordVoice.setAttribute('aria-label', 'Parar gravação de voz');
+        el.btnRecordVoice.title = 'Parar gravação e anexar áudio';
+
+        recordingTimerInterval = window.setInterval(() => {
+          recordingSeconds++;
+          el.recTimer.textContent = formatRecTime(recordingSeconds);
+        }, 1000);
+      } catch (err) {
+        stopRecordingCleanup();
+        mediaRecorder = null;
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          showToast('Permissão do microfone negada. Libere o acesso ao microfone no navegador.', 'error', 5500);
+        } else {
+          showToast(`Erro ao iniciar microfone: ${err.message}`, 'error', 5500);
+        }
+      }
+    });
+
+    async function handleSendModelingMessage() {
+      if (isBusy) return;
+      const text = el.chatInput.value.trim();
+      const attachmentsToSend = [...pendingAttachments];
+
+      if (!text && attachmentsToSend.length === 0) {
+        showToast('Digite uma instrução, anexe uma referência ou grave um áudio antes de enviar.', 'info');
+        return;
+      }
+
+      if (!getApiKey()) {
+        appendChatMessage({
+          role: 'error',
+          text: 'Chave de API não informada. Cole sua API Key do Google AI Studio na barra superior e clique em Salvar.'
+        });
+        showToast('Cole sua API Key do Google AI Studio na barra superior.', 'error');
+        el.apiKeyInput.focus();
+        return;
+      }
+
+      // Render user message immediately & reset composer
+      appendChatMessage({
+        role: 'user',
+        text: text || '(Anexo enviado para modelagem 3D)',
+        attachments: attachmentsToSend
+      });
+      el.chatInput.value = '';
+      pendingAttachments = [];
+      renderAttachmentChips();
+
+      const applyTexFromImg = el.chkTextureFromImage.checked;
+      const partNamesList = modelMeshes.map((m) => m.name).join(', ');
+      const contextPrefix = `[CONTEXTO DO MODELO 3D ATUAL]\nPeças atuais: ${partNamesList}\nCódigo Three.js atual:\n\`\`\`javascript\n${currentModelCode}\n\`\`\`\n\n[PEDIDO DO USUÁRIO]\n`;
+      const userPromptText = text || 'Crie ou atualize o modelo 3D com base nos arquivos/áudio anexados.';
+
+      const apiParts = [{ text: contextPrefix + userPromptText }];
+      for (const att of attachmentsToSend) {
+        apiParts.push({
+          inlineData: {
+            mimeType: att.mimeType,
+            data: att.base64
+          }
+        });
+      }
+
+      const nextHistory = [...chatHistory, { role: 'user', parts: apiParts }];
+
+      setLoading(true, `Modelando 3D com ${getSelectedModel()}...`);
+      try {
+        const replyText = await callGeminiGenerateContent({
+          systemInstruction: buildModelingSystemInstruction(applyTexFromImg),
+          contents: nextHistory
+        });
+
+        const generatedCode = extractJsCodeBlock(replyText);
+        if (!generatedCode) {
+          chatHistory = [...nextHistory, { role: 'model', parts: [{ text: replyText }] }];
+          appendChatMessage({
+            role: 'ai',
+            text: replyText || 'A IA respondeu sem um bloco de código JavaScript 3D.'
+          });
+          showToast('A IA não retornou um bloco de código 3D executável.', 'error');
+          return;
+        }
+
+        executeModelCode(generatedCode, { refitCamera: true });
+        chatHistory = [...nextHistory, { role: 'model', parts: [{ text: replyText }] }];
+
+        const summaryText = stripCodeBlocks(replyText) || 'Modelo 3D atualizado com sucesso!';
+        appendChatMessage({
+          role: 'ai',
+          text: `${summaryText}\n\nPeças geradas (${modelMeshes.length}): ${modelMeshes.map((m) => m.name).join(', ')}`
+        });
+        showToast('Modelo 3D atualizado no viewport.', 'success');
+      } catch (err) {
+        appendChatMessage({
+          role: 'error',
+          text: err.message
+        });
+        showToast(err.message, 'error', 5500);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    el.btnSendChat.addEventListener('click', handleSendModelingMessage);
+    el.chatInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleSendModelingMessage();
+      }
+    });
+
+    el.btnClearChat.addEventListener('click', () => {
+      chatHistory = [];
+      el.chatMessages.innerHTML = '';
+      appendChatMessage({
+        role: 'system',
+        text: 'Histórico limpo. Envie texto, fotos de referência, arquivos ou áudio para modelar ou editar a peça 3D atual.'
+      });
+    });
+
+    // =========================================================================
+    // 9. ABA 2: TEXTURIZAR COM IA (MANTENDO GEOMETRIA INTACTA)
+    // =========================================================================
+    function renderTextureRefChip() {
+      el.textureRefChipContainer.innerHTML = '';
+      el.textureRefChipContainer.classList.toggle('has-items', Boolean(textureRefPhoto));
+      if (!textureRefPhoto) return;
+
+      const chip = document.createElement('div');
+      chip.className = 'attach-chip';
+      const img = document.createElement('img');
+      img.src = textureRefPhoto.dataUrl;
+      img.alt = textureRefPhoto.name;
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'attach-chip-name';
+      nameSpan.textContent = textureRefPhoto.name;
+      const rmBtn = document.createElement('button');
+      rmBtn.type = 'button';
+      rmBtn.className = 'attach-chip-remove';
+      rmBtn.setAttribute('aria-label', 'Remover foto de referência de textura');
+      rmBtn.textContent = '×';
+      rmBtn.addEventListener('click', () => {
+        textureRefPhoto = null;
+        renderTextureRefChip();
+      });
+
+      chip.appendChild(img);
+      chip.appendChild(nameSpan);
+      chip.appendChild(rmBtn);
+      el.textureRefChipContainer.appendChild(chip);
+    }
+
+    el.btnTextureRefPhoto.addEventListener('click', () => el.textureRefFileInput.click());
+    el.textureRefFileInput.addEventListener('change', async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      try {
+        textureRefPhoto = await readFileAsAttachment(file);
+        renderTextureRefChip();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+      el.textureRefFileInput.value = '';
+    });
+
+    function buildTexturingSystemInstruction() {
+      return [
+        'Você é um artista de materiais PBR e texturas procedurais em Three.js.',
+        'REGRA ABSOLUTA: MANTENHA A GEOMETRIA 100% INTACTA. NÃO crie novos meshes, NÃO remova meshes, NÃO altere geometrias, posições, rotações ou escalas.',
+        'Seu código será executado dentro de: new Function("THREE", "group", code).',
+        'Percorra `group.traverse((child) => { if (child.isMesh) { ... } })` verificando `child.name` para aplicar novos materiais/cores/texturas.',
+        'Clone o material antes de modificar (`child.material = child.material.clone()`) ou atribua um novo `THREE.MeshStandardMaterial`.',
+        'Você pode definir `color`, `roughness`, `metalness`, e gerar texturas procedurais com `document.createElement("canvas")` + `new THREE.CanvasTexture(canvas)` (definindo `tex.colorSpace = THREE.SRGBColorSpace` para mapas de cor).',
+        'Sempre preserve uma cor base (`material.color`) representativa da peça para que a exportação .3MF reflita a cor corretamente.',
+        'PROIBIDO criar animações, requestAnimationFrame ou timers.',
+        'Retorne EXATAMENTE UM bloco ```javascript ... ``` completo e pronto para execução.'
+      ].join('\n');
+    }
+
+    el.btnApplyAiTexture.addEventListener('click', async () => {
+      if (isBusy) return;
+      const prompt = el.aiTexturePrompt.value.trim();
+      if (!prompt && !textureRefPhoto) {
+        showToast('Descreva como deseja texturizar ou anexe uma foto de referência.', 'info');
+        return;
+      }
+      if (!getApiKey()) {
+        showToast('Cole sua API Key do Google AI Studio na barra superior antes de texturizar com IA.', 'error');
+        el.apiKeyInput.focus();
+        return;
+      }
+
+      const partsDescription = modelMeshes
+        .map((m) => `- "${m.name}" (cor atual: #${m.material?.color?.getHexString?.() || 'cccccc'})`)
+        .join('\n');
+
+      const focusHint = selectedPartName
+        ? `Foco selecionado pelo usuário: peça "${selectedPartName}" (mas respeite se o prompt citar outras peças pelo nome).`
+        : 'Alvo selecionado: todas as peças do modelo.';
+
+      const userParts = [
+        {
+          text: `Peças reais existentes em \`group\`:\n${partsDescription}\n\n${focusHint}\n\nPedido de texturização:\n${prompt || 'Aplique cores e texturas inspiradas na imagem de referência anexada.'}`
+        }
+      ];
+
+      if (textureRefPhoto) {
+        userParts.push({
+          inlineData: {
+            mimeType: textureRefPhoto.mimeType,
+            data: textureRefPhoto.base64
+          }
+        });
+      }
+
+      setLoading(true, `Aplicando texturização com ${getSelectedModel()}...`);
+      try {
+        const replyText = await callGeminiGenerateContent({
+          systemInstruction: buildTexturingSystemInstruction(),
+          contents: [{ role: 'user', parts: userParts }]
+        });
+
+        const texCode = extractJsCodeBlock(replyText);
+        if (!texCode) {
+          throw new Error('A IA não retornou um bloco de código JavaScript de texturização.');
+        }
+
+        const fn = new Function('THREE', 'group', texCode);
+        fn(THREE, modelGroup);
+
+        // Ensure unique materials, wireframe sync, and base emissive bookkeeping
+        for (const mesh of modelMeshes) {
+          ensureUniqueMaterial(mesh);
+          mesh.material.wireframe = wireframeEnabled;
+          mesh.material.needsUpdate = true;
+        }
+        applySelectionHighlight();
+        renderPartsPills();
+        syncManualControlsFromSelection();
+        requestRender();
+
+        showToast('Texturização com IA aplicada mantendo a geometria intacta.', 'success');
+      } catch (err) {
+        showToast(`Erro na texturização com IA: ${err.message}`, 'error', 5500);
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    // Advanced Code Editor Re-Run
+    el.btnRerunCode.addEventListener('click', () => {
+      const editedCode = el.codeEditorTextarea.value.trim();
+      if (!editedCode) {
+        showToast('O editor de código está vazio.', 'error');
+        return;
+      }
+      try {
+        executeModelCode(editedCode, { refitCamera: false });
+        showToast('Código 3D reexecutado com sucesso.', 'success');
+      } catch (err) {
+        showToast(err.message, 'error', 5500);
+      }
+    });
+
+    // =========================================================================
+    // 10. EXPORTAÇÃO REAL PARA IMPRESSÃO 3D (.STL BINÁRIO E .3MF VÁLIDO)
+    // =========================================================================
+    function escapeXml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+    }
+
+    function colorToRgbaHex(color, opacity = 1) {
+      const hex = color && typeof color.getHexString === 'function'
+        ? color.getHexString().toUpperCase()
+        : 'CCCCCC';
+      const clamped = Math.max(0, Math.min(1, Number.isFinite(opacity) ? opacity : 1));
+      const alpha = Math.round(clamped * 255).toString(16).padStart(2, '0').toUpperCase();
+      return `#${hex}${alpha}`;
+    }
+
+    /**
+     * Normaliza todas as peças do modelo para impressão 3D:
+     * 1. Clona geometrias e aplica matrixWorld
+     * 2. Centraliza X e Z, encosta base no plano 0
+     * 3. Escala proporcionalmente para altura exata em mm
+     * 4. Converte Y-Up (Three.js) para Z-Up (Impressão 3D) via (x, -z, y) preservando normais
+     */
+    function buildNormalizedZUpParts(targetHeightMm) {
+      if (!modelMeshes.length) {
+        throw new Error('Não há nenhuma peça 3D no viewport para exportar.');
+      }
+      if (!Number.isFinite(targetHeightMm) || targetHeightMm <= 0) {
+        throw new Error('Informe uma Altura (mm) válida maior que zero.');
+      }
+
+      modelGroup.updateMatrixWorld(true);
+
+      const bakedEntries = [];
+      const worldBox = new THREE.Box3();
+
+      for (const mesh of modelMeshes) {
+        if (!mesh.geometry || !mesh.geometry.attributes.position) continue;
+        const clonedGeo = mesh.geometry.clone();
+        clonedGeo.applyMatrix4(mesh.matrixWorld);
+        clonedGeo.computeBoundingBox();
+        if (clonedGeo.boundingBox) {
+          worldBox.union(clonedGeo.boundingBox);
+        }
+        const det = mesh.matrixWorld.determinant();
+        const colorHexRgba = colorToRgbaHex(mesh.material?.color, mesh.material?.opacity ?? 1);
+        bakedEntries.push({
+          name: mesh.name || 'Peca',
+          geometry: clonedGeo,
+          flipWinding: det < 0,
+          displayColorRgba: colorHexRgba
+        });
+      }
+
+      if (!bakedEntries.length || worldBox.isEmpty()) {
+        throw new Error('Geometria vazia. Não foi possível normalizar o modelo.');
+      }
+
+      const size = new THREE.Vector3();
+      const center = new THREE.Vector3();
+      worldBox.getSize(size);
+      worldBox.getCenter(center);
+
+      if (size.y <= 1e-6) {
+        bakedEntries.forEach((e) => e.geometry.dispose());
+        throw new Error('O modelo possui altura zero e não pode ser escalado.');
+      }
+
+      const scale = targetHeightMm / size.y;
+      const offsetX = -center.x;
+      const offsetY = -worldBox.min.y;
+      const offsetZ = -center.z;
+
+      for (const entry of bakedEntries) {
+        const pos = entry.geometry.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+          const nx = (pos.getX(i) + offsetX) * scale;
+          const ny = (pos.getY(i) + offsetY) * scale;
+          const nz = (pos.getZ(i) + offsetZ) * scale;
+          // Conversão Y-Up -> Z-Up: (x, -z, y) com determinante +1
+          pos.setXYZ(i, nx, -nz, ny);
+        }
+        pos.needsUpdate = true;
+
+        // Se a matriz original tinha espelhamento (determinante negativo), inverte winding
+        if (entry.flipWinding) {
+          if (entry.geometry.index) {
+            const idxArr = entry.geometry.index.array;
+            for (let i = 0; i < idxArr.length; i += 3) {
+              const tmp = idxArr[i + 1];
+              idxArr[i + 1] = idxArr[i + 2];
+              idxArr[i + 2] = tmp;
+            }
+            entry.geometry.index.needsUpdate = true;
+          } else {
+            for (let i = 0; i < pos.count; i += 3) {
+              const x1 = pos.getX(i + 1), y1 = pos.getY(i + 1), z1 = pos.getZ(i + 1);
+              pos.setXYZ(i + 1, pos.getX(i + 2), pos.getY(i + 2), pos.getZ(i + 2));
+              pos.setXYZ(i + 2, x1, y1, z1);
+            }
+            pos.needsUpdate = true;
+          }
+        }
+
+        entry.geometry.computeVertexNormals();
+      }
+
+      return bakedEntries;
+    }
+
+    function triggerFileDownload(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 4000);
+    }
+
+    function getTargetHeightMm() {
+      const val = parseFloat(el.exportHeightMm.value);
+      if (!Number.isFinite(val) || val <= 0) return 100;
+      return val;
+    }
+
+    // Exportar .STL Binário
+    el.btnExportStl.addEventListener('click', async () => {
+      if (isBusy) return;
+      const heightMm = getTargetHeightMm();
+      setLoading(true, `Exportando .STL binário (${heightMm} mm)...`);
+      await new Promise((r) => setTimeout(r, 30));
+
+      let entries = [];
+      try {
+        entries = buildNormalizedZUpParts(heightMm);
+        const exportGroup = new THREE.Group();
+        const dummyMat = new THREE.MeshBasicMaterial();
+        for (const entry of entries) {
+          exportGroup.add(new THREE.Mesh(entry.geometry, dummyMat));
+        }
+        const exporter = new STLExporter();
+        const result = exporter.parse(exportGroup, { binary: true });
+        dummyMat.dispose();
+
+        const buffer = result instanceof DataView ? result.buffer : result;
+        const blob = new Blob([buffer], { type: 'application/octet-stream' });
+        triggerFileDownload(blob, `modelo-studio3d-${Math.round(heightMm)}mm.stl`);
+        showToast(`Arquivo .STL binário (${Math.round(heightMm)} mm, Z-Up) exportado com sucesso.`, 'success');
+      } catch (err) {
+        showToast(`Erro ao exportar .STL: ${err.message}`, 'error', 5500);
+      } finally {
+        entries.forEach((e) => e.geometry.dispose());
+        setLoading(false);
+      }
+    });
+
+    // Exportar .3MF Completo e Válido (Bambu Studio, OrcaSlicer, PrusaSlicer, Cura)
+    el.btnExport3mf.addEventListener('click', async () => {
+      if (isBusy) return;
+      if (typeof window.JSZip === 'undefined') {
+        showToast('Biblioteca JSZip não carregou. Verifique sua conexão com a internet.', 'error');
+        return;
+      }
+
+      const heightMm = getTargetHeightMm();
+      setLoading(true, `Empacotando .3MF colorido (${heightMm} mm)...`);
+      await new Promise((r) => setTimeout(r, 30));
+
+      let entries = [];
+      try {
+        entries = buildNormalizedZUpParts(heightMm);
+
+        const contentTypesXml = `<?xml version="1.0" encoding="UTF-8"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml" />
+  <Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml" />
+</Types>`;
+
+        const relsXml = `<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Target="/3D/3dmodel.model" Id="rel0" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel" />
+</Relationships>`;
+
+        const baseMaterialsLines = [];
+        const objectsChunks = [];
+        const buildItemsLines = [];
+
+        entries.forEach((entry, partIdx) => {
+          const objectId = partIdx + 2;
+          baseMaterialsLines.push(
+            `      <base name="${escapeXml(entry.name)}" displaycolor="${entry.displayColorRgba}" />`
+          );
+
+          const pos = entry.geometry.attributes.position;
+          const vertLines = new Array(pos.count);
+          for (let i = 0; i < pos.count; i++) {
+            vertLines[i] = `          <vertex x="${pos.getX(i).toFixed(4)}" y="${pos.getY(i).toFixed(4)}" z="${pos.getZ(i).toFixed(4)}" />`;
+          }
+
+          const triLines = [];
+          if (entry.geometry.index) {
+            const idx = entry.geometry.index.array;
+            for (let i = 0; i < idx.length; i += 3) {
+              const v1 = idx[i], v2 = idx[i + 1], v3 = idx[i + 2];
+              if (v1 === v2 || v2 === v3 || v1 === v3) continue;
+              triLines.push(`          <triangle v1="${v1}" v2="${v2}" v3="${v3}" pid="1" p1="${partIdx}" />`);
+            }
+          } else {
+            for (let i = 0; i < pos.count; i += 3) {
+              if (i + 2 >= pos.count) break;
+              triLines.push(`          <triangle v1="${i}" v2="${i + 1}" v3="${i + 2}" pid="1" p1="${partIdx}" />`);
+            }
+          }
+
+          objectsChunks.push(
+`    <object id="${objectId}" name="${escapeXml(entry.name)}" type="model" pid="1" pindex="${partIdx}">
+      <mesh>
+        <vertices>
+${vertLines.join('\n')}
+        </vertices>
+        <triangles>
+${triLines.join('\n')}
+        </triangles>
+      </mesh>
+    </object>`
+          );
+
+          buildItemsLines.push(`    <item objectid="${objectId}" />`);
+        });
+
+        const modelXml = `<?xml version="1.0" encoding="UTF-8"?>
+<model unit="millimeter" xml:lang="pt-BR" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">
+  <metadata name="Title">Modelo Estúdio 3D IA</metadata>
+  <resources>
+    <basematerials id="1">
+${baseMaterialsLines.join('\n')}
+    </basematerials>
+${objectsChunks.join('\n')}
+  </resources>
+  <build>
+${buildItemsLines.join('\n')}
+  </build>
+</model>`;
+
+        const zip = new window.JSZip();
+        zip.file('[Content_Types].xml', contentTypesXml);
+        zip.file('_rels/.rels', relsXml);
+        zip.file('3D/3dmodel.model', modelXml);
+
+        const blob = await zip.generateAsync({
+          type: 'blob',
+          mimeType: 'application/vnd.ms-package.3dmanufacturing-3dmodel+xml',
+          compression: 'DEFLATE'
+        });
+
+        triggerFileDownload(blob, `modelo-studio3d-${Math.round(heightMm)}mm.3mf`);
+        showToast(`Arquivo .3MF (${entries.length} peças coloridas, ${Math.round(heightMm)} mm) exportado com sucesso.`, 'success');
+      } catch (err) {
+        showToast(`Erro ao exportar .3MF: ${err.message}`, 'error', 5500);
+      } finally {
+        entries.forEach((e) => e.geometry.dispose());
+        setLoading(false);
+      }
+    });
+
+    // =========================================================================
+    // 11. CONTROLES DE ABAS E VIEWPORT
+    // =========================================================================
+    function switchTab(tabName) {
+      const isModeling = tabName === 'modeling';
+      el.tabBtnModeling.classList.toggle('is-active', isModeling);
+      el.tabBtnModeling.setAttribute('aria-selected', String(isModeling));
+      el.tabPanelModeling.classList.toggle('is-active', isModeling);
+
+      el.tabBtnTexturing.classList.toggle('is-active', !isModeling);
+      el.tabBtnTexturing.setAttribute('aria-selected', String(!isModeling));
+      el.tabPanelTexturing.classList.toggle('is-active', !isModeling);
+    }
+
+    el.tabBtnModeling.addEventListener('click', () => switchTab('modeling'));
+    el.tabBtnTexturing.addEventListener('click', () => switchTab('texturing'));
+
+    el.btnResetCamera.addEventListener('click', () => {
+      fitCameraToModel();
+    });
+
+    el.btnToggleWireframe.addEventListener('click', () => {
+      wireframeEnabled = !wireframeEnabled;
+      el.btnToggleWireframe.classList.toggle('is-active', wireframeEnabled);
+      el.btnToggleWireframe.setAttribute('aria-pressed', String(wireframeEnabled));
+      for (const mesh of modelMeshes) {
+        if (mesh.material) mesh.material.wireframe = wireframeEnabled;
+      }
+      requestRender();
+    });
+
+    el.btnToggleGrid.addEventListener('click', () => {
+      gridVisible = !gridVisible;
+      gridHelper.visible = gridVisible;
+      el.btnToggleGrid.classList.toggle('is-active', gridVisible);
+      el.btnToggleGrid.setAttribute('aria-pressed', String(gridVisible));
+      requestRender();
+    });
+
+    // =========================================================================
+    // 12. INICIALIZAÇÃO
+    // =========================================================================
+    loadSavedSettings();
+    resizeViewport();
+
+    try {
+      executeModelCode(DEFAULT_MODEL_CODE, { refitCamera: true });
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+
+    appendChatMessage({
+      role: 'system',
+      text: 'Bem-vindo ao Estúdio 3D IA! Um busto estilizado com múltiplas peças nomeadas já foi carregado para testes imediatos de seleção, texturização e exportação (.STL / .3MF). Cole sua API Key do Google AI Studio na barra superior para modelar ou editar com IA.'
+    });
+  </script>
+</body>
+</html>
