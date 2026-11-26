@@ -6,6 +6,8 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
+    // Caminho do repositório no GitHub Pages (https://gaduarte14.github.io/Est-dio3D/)
+    base: '/Est-dio3D/',
     plugins: [
       react(),
       tailwindcss(),
